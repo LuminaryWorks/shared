@@ -13,6 +13,8 @@
 | `@luminary/auth-react` | ✅ LW-S1 已迁入 | OIDC PKCE（React SPA） |
 | `@luminary/pal` | ✅ LW-S1 已迁入 | 权限抽象层 |
 
+> 品牌资源（六产品 Logo + 配色）：[`brand/`](./brand/README.md) — 全生态唯一来源。
+
 > `DataLuminary-Platform/packages/` 暂保留为**镜像**（标 `@deprecated`），五消费方按 [MIGRATION.md](./MIGRATION.md) 在 LW-S2 切换依赖。
 
 ## 开发

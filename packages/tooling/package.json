@@ -1,8 +1,18 @@
 {
   "name": "@luminary/tooling",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "LuminaryWorks shared Biome preset and tsconfig base",
-  "files": ["biome.base.json", "biome.backend.json", "biome.frontend.json", "tsconfig.base.json"],
+  "files": [
+    "biome.base.json",
+    "biome.backend.json",
+    "biome.frontend.json",
+    "biome.server.json",
+    "biome.web.json",
+    "tsconfig.base.json",
+    "templates/editorconfig",
+    "templates/nvmrc",
+    "templates/npmrc"
+  ],
   "peerDependencies": {
     "@biomejs/biome": "^2.4.0"
   }

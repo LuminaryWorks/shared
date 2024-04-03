@@ -1,0 +1,23 @@
+/**
+ * LuminaryWorks 生态统一设计令牌（UI/UX 主题）
+ * 唯一来源：LuminaryWorks/shared/brand/tokens.css
+ * 主色统一为品牌蓝 #1677ff；青→薄荷渐变为共享点缀（呼应母品牌光束）。
+ */
+:root {
+  /* 主色 */
+  --lw-primary: #1677ff;
+  --lw-primary-hover: #4593ff;
+  --lw-primary-active: #0958d9;
+  --lw-primary-light: #e6f0ff;
+
+  /* 点缀（生态家族识别，仅用于 hero / 高亮，不替代主色） */
+  --lw-accent-cyan: #18a0fb;
+  --lw-accent-mint: #21d4a8;
+  --lw-gradient: linear-gradient(120deg, #1677ff 20%, #18a0fb 60%, #21d4a8 100%);
+  --lw-gradient-cta: linear-gradient(120deg, #1677ff, #18a0fb);
+
+  /* 语义色 */
+  --lw-success: #2dcb56;
+  --lw-warning: #ff9c01;
+  --lw-danger: #ea3636;
+}

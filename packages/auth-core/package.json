@@ -28,7 +28,7 @@
     "reflect-metadata": "^0.2.0"
   },
   "devDependencies": {
-    "@luminaryworks/tooling": "workspace:*",
+    "@luminary/tooling": "workspace:*",
     "@nestjs/common": "^11.0.0",
     "@nestjs/core": "^11.0.0",
     "@types/node": "^22.0.0",

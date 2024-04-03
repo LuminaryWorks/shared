@@ -1,0 +1,26 @@
+# LuminaryWorks — 跨编辑器基础风格（与 @luminary/tooling Biome 对齐）
+# 行宽由 Biome formatter lineWidth=100 控制，不在此重复 max_line_length
+# https://editorconfig.org
+
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+
+[*.md]
+trim_trailing_whitespace = false
+
+[*.{yml,yaml}]
+indent_size = 2
+
+[*.go]
+indent_style = tab
+indent_size = 4
+
+[Makefile]
+indent_style = tab
