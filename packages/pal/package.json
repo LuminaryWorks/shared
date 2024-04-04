@@ -1,6 +1,7 @@
 {
   "name": "@luminary/pal",
   "version": "0.2.0",
+  "license": "Polyform-Noncommercial-1.0.0",
   "description": "LuminaryWorks Permission Abstraction Layer — NestJS library",
   "repository": {
     "type": "git",

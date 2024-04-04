@@ -2,7 +2,8 @@
   "name": "@luminaryworks/shared-workspace",
   "version": "0.0.0",
   "private": true,
-  "description": "LuminaryWorks shared libraries �?pnpm workspace for @luminaryworks/* packages",
+  "license": "Polyform-Noncommercial-1.0.0",
+  "description": "LuminaryWorks shared libraries — pnpm workspace for @luminaryworks/* packages",
   "packageManager": "pnpm@9.15.0",
   "scripts": {
     "build": "pnpm -r --if-present run build",
