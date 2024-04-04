@@ -1,5 +1,5 @@
 import { type DynamicModule, Global, Module } from "@nestjs/common";
-import { APP_GUARD } from "@nestjs/core";
+import { APP_GUARD, Reflector } from "@nestjs/core";
 import { LuminaryAuthService } from "./auth.service";
 import { LuminaryJwtAuthGuard } from "./guards/luminary-jwt-auth.guard";
 import { LUMINARY_AUTH_OPTIONS, type LuminaryAuthModuleOptions } from "./types";
@@ -11,6 +11,7 @@ export class LuminaryAuthModule {
     return {
       module: LuminaryAuthModule,
       providers: [
+        Reflector,
         { provide: LUMINARY_AUTH_OPTIONS, useValue: options },
         LuminaryAuthService,
         LuminaryJwtAuthGuard,
@@ -28,6 +29,7 @@ export class LuminaryAuthModule {
     return {
       module: LuminaryAuthModule,
       providers: [
+        Reflector,
         { provide: LUMINARY_AUTH_OPTIONS, useValue: options },
         LuminaryAuthService,
         LuminaryJwtAuthGuard,
