@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none" role="img" aria-label="LuminaryWorks">
+  <title>LuminaryWorks</title>
+  <defs>
+    <!-- sampled from luminaryworks-logo.png: W #7A54FA → N #4E65FB → E/S mint -->
+    <linearGradient id="lw-mark" x1="10" y1="70" x2="246" y2="200" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#8255FA"/>
+      <stop offset="10%" stop-color="#7A54FA"/>
+      <stop offset="26%" stop-color="#4E65FB"/>
+      <stop offset="42%" stop-color="#1396FC"/>
+      <stop offset="55%" stop-color="#0AC4F4"/>
+      <stop offset="70%" stop-color="#14E5A2"/>
+      <stop offset="100%" stop-color="#28F3A7"/>
+    </linearGradient>
+  </defs>
+
+  <g fill="url(#lw-mark)">
+    <!-- 8-point lumen / compass body -->
+    <path
+      d="
+        M128 22
+        L141.78 94.74
+        L181.74 74.26
+        L161.26 114.22
+        L234 128
+        L161.26 141.78
+        L181.74 181.74
+        L141.78 161.26
+        L128 234
+        L114.22 161.26
+        L74.26 181.74
+        L94.74 141.78
+        L22 128
+        L94.74 114.22
+        L74.26 74.26
+        L114.22 94.74
+        Z
+      "
+    />
+
+    <!-- interstitial rays -->
+    <path d="M151.73 70.72 L146.27 92.26 L140.35 89.82 Z"/>
+    <path d="M185.28 104.27 L166.18 115.65 L163.74 109.73 Z"/>
+    <path d="M185.28 151.73 L163.74 146.27 L166.18 140.35 Z"/>
+    <path d="M151.73 185.28 L140.35 166.18 L146.27 163.74 Z"/>
+    <path d="M104.27 185.28 L109.73 163.74 L115.65 166.18 Z"/>
+    <path d="M70.72 151.73 L89.82 140.35 L92.26 146.27 Z"/>
+    <path d="M70.72 104.27 L92.26 109.73 L89.82 115.65 Z"/>
+    <path d="M104.27 70.72 L115.65 89.82 L109.73 92.26 Z"/>
+
+    <!-- tip nodes -->
+    <circle cx="128" cy="10" r="7"/>
+    <circle cx="190.22" cy="65.78" r="6.2"/>
+    <circle cx="246" cy="128" r="7"/>
+    <circle cx="190.22" cy="190.22" r="6.2"/>
+    <circle cx="128" cy="246" r="7"/>
+    <circle cx="65.78" cy="190.22" r="6.2"/>
+    <circle cx="10" cy="128" r="7"/>
+    <circle cx="65.78" cy="65.78" r="6.2"/>
+  </g>
+
+  <!-- solid white sparkle core (matches original PNG) -->
+  <path
+    fill="#FFFFFF"
+    d="M128 94 C133 119.34 136.66 123 162 128 C136.66 133 133 136.66 128 162 C123 136.66 119.34 133 94 128 C119.34 123 123 119.34 128 94 Z"
+  />
+</svg>

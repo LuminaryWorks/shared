@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none" role="img" aria-label="DataLuminary">
+  <defs>
+    <linearGradient id="dl-bg" x1="64" y1="48" x2="448" y2="464" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#1B5BD6"/>
+      <stop offset="100%" stop-color="#3A84FF"/>
+    </linearGradient>
+    <linearGradient id="dl-area" x1="256" y1="180" x2="256" y2="372" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.34"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="dl-spark" x1="356" y1="120" x2="356" y2="272" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#BFDBFF"/>
+    </linearGradient>
+    <filter id="dl-glow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="7" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="#0A1020"/>
+  <rect width="512" height="512" rx="112" fill="url(#dl-bg)"/>
+
+  <!-- data area + ascending insight line (full-link data) -->
+  <path d="M120 360 L196 318 L268 342 L356 200 L356 360 Z" fill="url(#dl-area)"/>
+  <path d="M120 360 L196 318 L268 342 L356 200" stroke="#FFFFFF" stroke-width="20" stroke-linecap="round" stroke-linejoin="round" opacity="0.95"/>
+  <!-- data points -->
+  <g fill="#FFFFFF" opacity="0.85">
+    <circle cx="120" cy="360" r="11"/>
+    <circle cx="196" cy="318" r="11"/>
+    <circle cx="268" cy="342" r="11"/>
+  </g>
+
+  <!-- AI insight lumen (data culminates into a spark) -->
+  <g filter="url(#dl-glow)">
+    <path d="M356 124 Q356 198 426 198 Q356 198 356 272 Q356 198 286 198 Q356 198 356 124 Z" fill="url(#dl-spark)"/>
+  </g>
+  <!-- secondary AI sparkle -->
+  <path d="M168 150 Q168 178 196 178 Q168 178 168 206 Q168 178 140 178 Q168 178 168 150 Z" fill="#FFFFFF" opacity="0.9"/>
+</svg>

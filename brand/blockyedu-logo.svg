@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="100%" height="100%">
+  <defs>
+    <!-- 完美匹配原图的蓝色对角渐变 -->
+    <!-- 左上角为较深的科技蓝，右下角为明亮的青蓝 -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1B6DFE"/>
+      <stop offset="100%" stop-color="#00C4FF"/>
+    </linearGradient>
+
+    <!-- 遮罩层：白色的地方保留图形，黑色的地方被掏空透出底色 -->
+    <mask id="cutouts">
+      <rect width="1024" height="1024" fill="white" />
+
+      <!-- 中间四角星镂空 -->
+      <path d="M 435 442 Q 435 512, 505 512 Q 435 512, 435 582 Q 435 512, 335 512 Q 435 512, 435 442 Z" fill="black" />
+
+      <!-- 右上角 Play 播放键镂空 (带圆角处理) -->
+      <path d="M 570 275 L 650 325 L 570 375 Z" fill="black" stroke="black" stroke-width="24" stroke-linejoin="round" />
+
+      <!-- 右下角 </> 代码符号镂空 (带圆角处理) -->
+      <g fill="none" stroke="black" stroke-width="28" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M 605 650 L 555 700 L 605 750" />
+        <line x1="675" y1="630" x2="635" y2="770" />
+        <path d="M 705 650 L 755 700 L 705 750" />
+      </g>
+    </mask>
+  </defs>
+
+  <!-- 1. 最底层：还原你原图外部的纯黑底色 -->
+  <!-- 如果未来需要透明背景的图标，直接删除下面这行代码即可 -->
+  <rect width="1024" height="1024" fill="#000000" />
+
+  <!-- 2. 圆角背景：应用了原图色彩的渐变圆角矩形 -->
+  <rect width="1024" height="1024" rx="220" fill="url(#bgGrad)" />
+
+  <!-- 3. 白色几何模块组 (应用掏空遮罩) -->
+  <g mask="url(#cutouts)" fill="white">
+    
+    <!-- 左侧三个基础方块 -->
+    <rect x="160" y="152" width="260" height="220" rx="40" />
+    <rect x="160" y="402" width="260" height="220" rx="40" />
+    <rect x="160" y="652" width="260" height="220" rx="40" />
+
+    <!-- 右上角 'D' 形半圆块 -->
+    <path d="M 490 152 H 687.5 A 172.5 172.5 0 0 1 860 324.5 A 172.5 172.5 0 0 1 687.5 497 H 490 A 40 40 0 0 1 450 457 V 192 A 40 40 0 0 1 490 152 Z" />
+
+    <!-- 右下角 'D' 形半圆块 -->
+    <path d="M 490 527 H 687.5 A 172.5 172.5 0 0 1 860 699.5 A 172.5 172.5 0 0 1 687.5 872 H 490 A 40 40 0 0 1 450 832 V 567 A 40 40 0 0 1 490 527 Z" />
+  </g>
+
+  <!-- 4. 黄色四角星 (精准填补在遮罩镂空的位置上，提取原图金黄色) -->
+  <path d="M 435 442 Q 435 512, 505 512 Q 435 512, 435 582 Q 435 512, 335 512 Q 435 512, 435 442 Z" fill="#FFC000" />
+
+</svg>
