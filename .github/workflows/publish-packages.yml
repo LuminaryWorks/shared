@@ -28,7 +28,7 @@ jobs:
           pnpm install --frozen-lockfile
           pnpm build
 
-      - name: Publish auth-core, auth-react, pal
+      - name: Publish auth-core, auth-react, pal, notification
         run: pnpm publish:packages
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -19,6 +19,8 @@ export function createUserManager(config: LuminaryIdpConfig): UserManager {
     scope: config.scopes ?? "openid profile email offline_access",
     automaticSilentRenew: true,
     userStore: new WebStorageStateStore({ store: window.localStorage }),
+    // Logto API resource indicator → access token `aud` matches product IDP_AUDIENCE
+    extraQueryParams: config.audience ? { resource: config.audience } : undefined,
   });
 
   return manager;

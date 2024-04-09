@@ -14,7 +14,10 @@
   },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "files": ["dist", "README.md"],
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "check": "tsc -p tsconfig.json --noEmit",
@@ -32,8 +35,11 @@
     "@luminary/tooling": "workspace:*",
     "@nestjs/common": "^11.0.0",
     "@nestjs/core": "^11.0.0",
-    "@types/node": "^22.0.0",
+    "@types/node": "^24.0.0",
     "reflect-metadata": "^0.2.2",
     "typescript": "^5.7.0"
+  },
+  "engines": {
+    "node": ">=24.0.0"
   }
 }

@@ -12,6 +12,8 @@
 | `@luminary/auth-core` | ✅ LW-S1 已迁入 | OIDC JWKS 验签（NestJS） |
 | `@luminary/auth-react` | ✅ LW-S1 已迁入 | OIDC PKCE（React SPA） |
 | `@luminary/pal` | ✅ LW-S1 已迁入 | 权限抽象层 |
+| `@luminaryworks/notification` | ✅ 一期 Email | NotificationModule（SMTP / SES Mail Manager） |
+| `@luminaryworks/entitlement-client` | ✅ 一期 | NestJS client：`ENTITLEMENT_MODE`、TTL cache、check/consume |
 
 > 品牌资源（六产品 Logo + 配色）：[`brand/`](./brand/README.md) — 全生态唯一来源。
 

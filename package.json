@@ -8,9 +8,13 @@
   "scripts": {
     "build": "pnpm -r --if-present run build",
     "check": "pnpm -r --if-present run check",
-    "publish:packages": "pnpm --filter @luminaryworks/auth-core --filter @luminaryworks/auth-react --filter @luminaryworks/pal publish --no-git-checks"
+    "publish:packages": "pnpm --filter @luminaryworks/auth-core --filter @luminaryworks/auth-react --filter @luminaryworks/pal --filter @luminaryworks/notification --filter @luminaryworks/entitlement-client publish --no-git-checks",
+    "test": "pnpm -r --if-present run test"
   },
   "devDependencies": {
     "typescript": "^5.7.0"
+  },
+  "engines": {
+    "node": ">=24.0.0"
   }
 }

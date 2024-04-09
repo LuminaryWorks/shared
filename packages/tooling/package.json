@@ -16,5 +16,8 @@
   ],
   "peerDependencies": {
     "@biomejs/biome": "^2.4.0"
+  },
+  "engines": {
+    "node": ">=24.0.0"
   }
 }
