@@ -1,0 +1,15 @@
+{
+  "extends": "@luminary/tooling/tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    // Nest backends load this package via CommonJS; source still uses ES import/export.
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "declaration": true
+  },
+  "include": ["src/**/*"],
+  "exclude": ["src/**/*.spec.ts"]
+}

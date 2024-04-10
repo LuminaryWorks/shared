@@ -1,0 +1,58 @@
+{
+  "name": "@luminaryworks/entitlement-client",
+  "version": "0.1.0",
+  "license": "Polyform-Noncommercial-1.0.0",
+  "description": "LuminaryWorks Entitlement NestJS client — TTL cache, ENTITLEMENT_MODE, stable DTO/errors",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/LuminaryWorks/shared.git",
+    "directory": "packages/entitlement-client"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "restricted"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist/**/*.js",
+    "dist/**/*.d.ts",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "test": "rstest",
+    "prepublishOnly": "pnpm run build",
+    "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
+    "prepare": "pnpm run build",
+    "prepack": "pnpm run build"
+  },
+  "dependencies": {},
+  "peerDependencies": {
+    "@nestjs/common": "^10.0.0 || ^11.0.0",
+    "@nestjs/core": "^10.0.0 || ^11.0.0",
+    "reflect-metadata": "^0.2.0"
+  },
+  "devDependencies": {
+    "@luminary/tooling": "workspace:*",
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/core": "^11.0.0",
+    "@rstest/core": "^0.4.1",
+    "@types/node": "^24.0.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2",
+    "typescript": "^5.7.0"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "engines": {
+    "node": ">=24.0.0"
+  }
+}
