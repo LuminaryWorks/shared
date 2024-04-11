@@ -1,0 +1,258 @@
+$ink: #14212b;
+$muted: #4b5c68;
+$hint: #6b7c87;
+$brand: #3d6f8f;
+$brand-deep: #15485c;
+$brand-mid: #1f6f8b;
+$border: #c9d5de;
+$border-soft: #b7c9d4;
+$line: #d5e0e7;
+$divider: #90a0ab;
+$surface: #f7fafc;
+$fallback-bg: #e8eef2;
+$danger: #b42318;
+$footer-line: #e4ebf0;
+$radius-lg: 16px;
+$radius-md: 10px;
+$radius-sm: 4px;
+
+.panel {
+  --lw-auth-theme: #3a84ff;
+  --lw-auth-theme-deep: color-mix(in srgb, var(--lw-auth-theme) 72%, #000);
+  width: min(100%, 400px);
+  padding: 28px 28px 22px;
+  border-radius: $radius-lg;
+  background: rgba(255, 255, 255, 0.96);
+  color: $ink;
+  box-shadow: 0 24px 64px rgba(15, 23, 42, 0.28);
+  font-family: "Segoe UI", "PingFang SC", "Noto Sans SC", sans-serif;
+}
+
+.brand {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.logo {
+  border-radius: 12px;
+  display: block;
+}
+
+.product {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--lw-auth-theme);
+}
+
+.title {
+  margin: 2px 0 0;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.subtitle {
+  margin: 0 0 18px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: $muted;
+}
+
+.form {
+  display: grid;
+  gap: 10px;
+}
+
+.socialStack {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 12px;
+}
+
+.input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid $border;
+  border-radius: $radius-md;
+  padding: 10px 12px;
+  font-size: 14px;
+  outline: none;
+  background: $surface;
+
+  &:focus {
+    border-color: var(--lw-auth-theme);
+  }
+
+  &:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+  }
+}
+
+.passwordField {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.passwordInput {
+  padding-right: 42px;
+}
+
+.passwordToggle {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: $radius-sm;
+  padding: 0;
+  color: #5a6b76;
+  background: transparent;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    color: var(--lw-auth-theme);
+    background: color-mix(in srgb, var(--lw-auth-theme) 12%, transparent);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--lw-auth-theme);
+    outline-offset: 1px;
+  }
+
+  &:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+  }
+}
+
+.primaryBtn {
+  border: none;
+  border-radius: $radius-md;
+  padding: 11px 14px;
+  font-size: 14px;
+  font-weight: 650;
+  cursor: pointer;
+  color: #fff;
+  background: linear-gradient(135deg, var(--lw-auth-theme) 0%, var(--lw-auth-theme-deep) 100%);
+
+  &:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+  }
+}
+
+.socialBtn {
+  flex: 1 1 calc(50% - 5px);
+  min-width: min(140px, 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid $border-soft;
+  border-radius: $radius-md;
+  padding: 11px 10px;
+  font-size: 14px;
+  font-weight: 650;
+  cursor: pointer;
+  color: $ink;
+  background: #fff;
+
+  &:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+  }
+}
+
+.socialLogo {
+  flex-shrink: 0;
+  display: block;
+}
+
+.logoFallback {
+  width: 18px;
+  height: 18px;
+  border-radius: $radius-sm;
+  background: color-mix(in srgb, var(--lw-auth-theme) 14%, #fff);
+  color: var(--lw-auth-theme-deep);
+  font-size: 11px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.cancelBtn {
+  margin-top: 10px;
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: #5a6b76;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 8px;
+
+  &:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+  }
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 14px 0;
+  color: $divider;
+}
+
+.dividerLine {
+  flex: 1;
+  height: 1px;
+  background: $line;
+}
+
+.dividerText {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.hint {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: $hint;
+  line-height: 1.45;
+}
+
+.error {
+  margin: 12px 0 0;
+  font-size: 13px;
+  color: $danger;
+  line-height: 1.4;
+}
+
+.footer {
+  margin-top: 18px;
+  padding-top: 12px;
+  border-top: 1px solid $footer-line;
+  font-size: 12px;
+  color: $hint;
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}

@@ -66,12 +66,26 @@ export class OidcJwtVerifier {
 
     const verifyOptions: Parameters<typeof jwtVerify>[2] = {
       issuer: this.discovery?.issuer ?? this.issuer,
+      // Logto API resource access tokens use typ "at+jwt" (RFC 9068)
+      typ: "at+jwt",
     };
     if (this.options.audience) {
       verifyOptions.audience = this.options.audience;
     }
 
-    const { payload } = await jwtVerify(token, jwks, verifyOptions);
+    let payload: JWTPayload;
+    try {
+      ({ payload } = await jwtVerify(token, jwks, verifyOptions));
+    } catch (first) {
+      // Some IdPs omit typ or use "JWT"; retry without typ constraint.
+      try {
+        const opts = { ...verifyOptions };
+        delete opts.typ;
+        ({ payload } = await jwtVerify(token, jwks, opts));
+      } catch {
+        throw first;
+      }
+    }
 
     const sub = String(payload.sub ?? "");
     if (!sub) throw new Error("JWT missing sub");

@@ -1,3 +1,5 @@
-# Copy to .npmrc (do not commit tokens). For CI use NODE_AUTH_TOKEN / secrets.GITHUB_TOKEN.
+# Registry only in repo (safe to commit).
+# Put auth in ~/.npmrc (pnpm does not expand ${NODE_AUTH_TOKEN} from project .npmrc):
+#   //npm.pkg.github.com/:_authToken=ghp_...
+# CI: actions/setup-node with registry-url + NODE_AUTH_TOKEN secret.
 @luminaryworks:registry=https://npm.pkg.github.com
-//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}

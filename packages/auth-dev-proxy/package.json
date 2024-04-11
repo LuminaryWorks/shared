@@ -1,19 +1,28 @@
 {
-  "name": "@luminaryworks/auth-core",
-  "version": "0.2.1",
+  "name": "@luminaryworks/auth-dev-proxy",
+  "version": "0.1.0",
   "license": "Polyform-Noncommercial-1.0.0",
-  "description": "LuminaryWorks unified OIDC JWT verification for NestJS backends",
+  "description": "Same-origin /oidc + /api/experience dev proxy for LuminaryWorks SPAs (Rsbuild/Vite/Next)",
   "repository": {
     "type": "git",
     "url": "https://github.com/LuminaryWorks/shared.git",
-    "directory": "packages/auth-core"
+    "directory": "packages/auth-dev-proxy"
   },
   "publishConfig": {
     "registry": "https://npm.pkg.github.com",
     "access": "restricted"
   },
+  "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
   "files": [
     "dist",
     "README.md"
@@ -23,20 +32,9 @@
     "check": "tsc -p tsconfig.json --noEmit",
     "prepublishOnly": "pnpm run build"
   },
-  "dependencies": {
-    "jose": "^6.0.11"
-  },
-  "peerDependencies": {
-    "@nestjs/common": "^10.0.0 || ^11.0.0",
-    "@nestjs/core": "^10.0.0 || ^11.0.0",
-    "reflect-metadata": "^0.2.0"
-  },
   "devDependencies": {
     "@luminary/tooling": "workspace:*",
-    "@nestjs/common": "^11.0.0",
-    "@nestjs/core": "^11.0.0",
     "@types/node": "^24.0.0",
-    "reflect-metadata": "^0.2.2",
     "typescript": "^5.7.0"
   },
   "engines": {

@@ -1,43 +1,45 @@
-# 共享库迁移运行手�?
-�?`@luminaryworks/auth-core`、`auth-react`、`pal` �?`DataLuminary-Platform/packages/` 迁入本工作区，并切换五消费方依赖�?*分阶段、可回滚、不破坏构建�?*
+# 共享库迁移运行手册
 
-## 消费方现状（LW-S2 已切换至 shared�?
-| 消费�?| 依赖路径 |
-|--------|----------|
-| DataTalk | `file:../../../LuminaryWorks/shared/packages/auth-core` |
-| VibeEdu server | `file:../../../LuminaryWorks/shared/packages/auth-core` |
-| VibeAgent api | `file:../../../../LuminaryWorks/shared/packages/auth-core` |
-| VistaRemote server | `file:../../LuminaryWorks/shared/packages/auth-core` |
-| iot-gateway | `file:../../../LuminaryWorks/shared/packages/auth-core` |
+将 `@luminaryworks/*` 从本地 `file:` 切换为 GitHub Packages 版本依赖。
 
-> 安装前在 `LuminaryWorks/shared` 执行 `pnpm build`，确�?`auth-core/dist` 存在�?
-## LW-S1 �?源码迁入 + 发布 �?
-已完成（2026-06）：
+## 当前状态（2026-08）
 
-- `packages/auth-core`、`auth-react`、`pal` 源码已迁入本工作�?- 各包 `tsconfig` extends `@luminaryworks/tooling`
-- `pnpm install && pnpm build` 通过
+| 包 | 版本 | Registry |
+|----|------|----------|
+| `@luminaryworks/auth-core` | 0.2.1 | ✅ |
+| `@luminaryworks/auth-react` | 0.3.0 | ✅ |
+| `@luminaryworks/auth-dev-proxy` | 0.1.0 | ✅ |
+| `@luminaryworks/pal` | 0.2.0 | ✅ |
+| `@luminaryworks/entitlement-client` | 0.1.0 | ✅ |
+| `@luminaryworks/notification` | 0.1.0 | ✅ |
 
-DataLuminary `packages/` 暂保留为镜像（见 `DEPRECATED.md`），指向本仓�?
-**待办（发布）**：配�?GitHub Packages �?`pnpm -r publish --access restricted`�?
-## LW-S2 �?消费方切�?�?
-已将五消费方 `file:` 路径�?`DataLuminary-Platform/packages/` 改为 `LuminaryWorks/shared/packages/auth-core`�?
-```bash
-cd LuminaryWorks/shared && pnpm build
-# 各消费方
-pnpm install && pnpm run build   # �?tsc --noEmit
+消费方 `package.json` 使用 `^x.y.z`，不再写死 `file:…/LuminaryWorks/shared/...`。
+
+## 消费方 `.npmrc`
+
+```ini
+@luminaryworks:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}
 ```
 
-## LW-S4 �?GitHub Packages 发布
+本机把 PAT 写在 `~/.npmrc`，或设置环境变量 `NODE_AUTH_TOKEN`（需 `read:packages`）。
 
-- 版本 **0.2.0**，`publishConfig` �?`npm.pkg.github.com`
-- CI：`.github/workflows/publish-packages.yml`（`workflow_dispatch` �?Release�?- 说明：[PUBLISH.md](./PUBLISH.md)
+## 本地改 shared 源码（可选）
 
-发包后消费方可将 `file:` 换为 `"@luminaryworks/auth-core": "^0.2.0"` + 根目�?`.npmrc`（见 `.npmrc.example`）�?
-> **状�?*：CI workflow 已就绪；首次发布待组�?[Packages 权限](./docs/org-packages-setup.md) 开通后 `workflow_dispatch`�?
-## LW-S3 �?清理 �?
-已删�?`DataLuminary-Platform/packages/` 镜像；规格见 `spec/development/shared-packages.md`�?
-�?tag `pre-packages-removal` 备份（可选）�?
-## 回滚
+日常开发直接装 registry 版本。只有在改 shared 未发版时，才在产品仓加：
 
-- S1/S2 期间 `file:` 与版本号可经 `pnpm.overrides` 并存
-- 每阶段独�?PR + tag，可单独 revert
+```json
+{
+  "pnpm": {
+    "overrides": {
+      "@luminaryworks/auth-core": "file:../../LuminaryWorks/shared/packages/auth-core"
+    }
+  }
+}
+```
+
+然后 `pnpm install`。发版后去掉 overrides。
+
+## 发布
+
+见 [PUBLISH.md](./PUBLISH.md)。CI：`gh workflow run publish-packages.yml --repo LuminaryWorks/shared`。

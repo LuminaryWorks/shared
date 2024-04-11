@@ -4,6 +4,7 @@ import {
   getCurrentUser,
   getStoredAccessToken,
   handleSignInCallback,
+  signInPopup,
   signInRedirect,
   signOutRedirect,
 } from "./oidc-client";
@@ -15,6 +16,8 @@ interface LuminaryAuthContextValue {
   accessToken: string | null;
   loading: boolean;
   login: (returnUrl?: string) => Promise<void>;
+  /** Popup OIDC — keeps the opener SPA mounted. */
+  loginPopup: (returnUrl?: string) => Promise<LuminaryAuthSession>;
   logout: () => Promise<void>;
   completeCallback: () => Promise<{ returnUrl?: string }>;
   refreshSession: () => Promise<void>;
@@ -51,13 +54,23 @@ export function LuminaryAuthProvider({ config: configProp, children }: LuminaryA
   }, [config, configured]);
 
   useEffect(() => {
-    refreshSession();
+    void refreshSession();
   }, [refreshSession]);
 
   const login = useCallback(
     async (returnUrl?: string) => {
       if (!configured) throw new Error("IdP not configured");
       await signInRedirect(config, returnUrl);
+    },
+    [config, configured],
+  );
+
+  const loginPopup = useCallback(
+    async (returnUrl?: string) => {
+      if (!configured) throw new Error("IdP not configured");
+      const { session: next } = await signInPopup(config, returnUrl);
+      setSession(next);
+      return next;
     },
     [config, configured],
   );
@@ -86,11 +99,12 @@ export function LuminaryAuthProvider({ config: configProp, children }: LuminaryA
       accessToken: session?.accessToken ?? (configured ? getStoredAccessToken(config) : null),
       loading,
       login,
+      loginPopup,
       logout,
       completeCallback,
       refreshSession,
     }),
-    [configured, session, loading, login, logout, completeCallback, refreshSession, config],
+    [configured, session, loading, login, loginPopup, logout, completeCallback, refreshSession, config],
   );
 
   return <LuminaryAuthContext.Provider value={value}>{children}</LuminaryAuthContext.Provider>;
