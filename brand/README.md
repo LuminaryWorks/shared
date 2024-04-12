@@ -14,6 +14,21 @@ LuminaryWorks 生态六个组织/产品的官方 Logo 与配色，作为全生�
 | **VistaRemote** | `vistaremote-logo.svg` | SVG |
 | **DoerFlow** | `doerflow-logo.svg` | SVG |
 
+
+
+## CDN 对外地址
+
+图片已上传 Cloudflare R2，对外前缀：
+
+`https://cdn.luminaryworks.dev/logo/`
+
+例如：
+
+- `https://cdn.luminaryworks.dev/logo/luminaryworks-logo.svg`
+- `https://cdn.luminaryworks.dev/logo/dataluminary-logo.svg`
+
+Identity 登录页 logo 直接引用 CDN，不再启动本地 `identity-brand` 容器。
+
 ## 应用到文档站
 
 宣传站 [`docs`](https://github.com/LuminaryWorks/docs) 使用：

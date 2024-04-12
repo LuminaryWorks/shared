@@ -1,5 +1,6 @@
 # Sync LuminaryWorks engineering baseline (.editorconfig, .nvmrc, .npmrc, biome presets)
-# Source: packages/tooling (canonical @luminary/tooling)
+# Source: packages/tooling (canonical @luminaryworks/tooling)
+# Paths: relative to workspace root (sibling of LuminaryWorks) — no drive letter.
 param(
   [switch]$DryRun
 )
@@ -7,6 +8,10 @@ param(
 $ErrorActionPreference = 'Stop'
 $Canonical = Join-Path $PSScriptRoot '..\packages\tooling'
 $Templates = Join-Path $Canonical 'templates'
+
+# shared/scripts → shared → LuminaryWorks → {workspace}
+$Www = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path
+$Meta = Join-Path $Www 'LuminaryWorks'
 
 $BiomePresets = @(
   'biome.base.json',
@@ -17,12 +22,12 @@ $BiomePresets = @(
 )
 
 $MetaToolingDirs = @(
-  'D:\www\LuminaryWorks\tooling',
-  'D:\www\BlockyEdu\VibeEdu\tooling',
-  'D:\www\VistaRemote\tooling',
-  'D:\www\AgentSkillMesh\VibeAgent\tooling',
-  'D:\www\LuminaryIoTChain\tooling',
-  'D:\www\DataLuminary\DataLuminary-Platform\tooling'
+  (Join-Path $Meta 'tooling'),
+  (Join-Path $Www 'blockyedu\tooling'),
+  (Join-Path $Www 'vistaremote\tooling'),
+  (Join-Path $Www 'doerflow\tooling'),
+  (Join-Path $Www 'syncrobrain\tooling'),
+  (Join-Path $Www 'dataluminary\tooling')
 )
 
 function Copy-FileTo {
@@ -62,39 +67,39 @@ foreach ($dir in $MetaToolingDirs) {
   Copy-FileTo (Join-Path $Canonical 'biome.base.json') (Join-Path $dir 'biome.base.json')
 }
 
-# 2) Per-repo baseline
+# 2) Per-repo baseline (Phase C flat layout under {workspace}/)
 # Profile: editorconfig, nvmrc, npmrc, biomeExtends (null = skip biome.json)
 $Repos = @(
-  @{ Path = 'D:\www\LuminaryWorks'; Nvmrc = $false; Npmrc = $false; Biome = './tooling/biome.base.json' },
-  @{ Path = 'D:\www\LuminaryWorks\docs'; Biome = '../tooling/biome.frontend.json' },
-  @{ Path = 'D:\www\LuminaryWorks\identity'; Biome = $null },
-  @{ Path = 'D:\www\LuminaryWorks\shared'; Biome = './packages/tooling/biome.base.json' },
-  @{ Path = 'D:\www\BlockyEdu\VibeEdu'; Biome = './tooling/biome.base.json' },
-  @{ Path = 'D:\www\BlockyEdu\VibeEdu\server'; Biome = '../tooling/biome.backend.json' },
-  @{ Path = 'D:\www\BlockyEdu\VibeEdu\code-app-web'; Biome = '../tooling/biome.frontend.json' },
-  @{ Path = 'D:\www\BlockyEdu\VibeEdu\edu-app-web'; Biome = '../tooling/biome.frontend.json' },
-  @{ Path = 'D:\www\BlockyEdu\VibeEdu\media-platform'; Biome = '../tooling/biome.backend.json' },
-  @{ Path = 'D:\www\VistaRemote'; Biome = './tooling/biome.base.json' },
-  @{ Path = 'D:\www\VistaRemote\server'; Biome = '../tooling/biome.server.json' },
-  @{ Path = 'D:\www\VistaRemote\web'; Biome = '../tooling/biome.web.json' },
-  @{ Path = 'D:\www\VistaRemote\ai'; Biome = '../tooling/biome.server.json' },
-  @{ Path = 'D:\www\VistaRemote\deploy'; Biome = '../tooling/biome.base.json' },
-  @{ Path = 'D:\www\VistaRemote\desktop'; Biome = '../tooling/biome.desktop.json' },
-  @{ Path = 'D:\www\VistaRemote\docs'; Biome = '../tooling/biome.web.json' },
-  @{ Path = 'D:\www\VistaRemote\mobile'; Biome = '../tooling/biome.mobile.json' },
-  @{ Path = 'D:\www\VistaRemote\shared'; Biome = '../tooling/biome.base.json' },
-  @{ Path = 'D:\www\AgentSkillMesh\VibeAgent'; Biome = './tooling/biome.base.json' },
-  @{ Path = 'D:\www\AgentSkillMesh\VibeAgent\repos\api'; Biome = '../../tooling/biome.backend.json' },
-  @{ Path = 'D:\www\AgentSkillMesh\VibeAgent\repos\web'; Biome = '../../tooling/biome.frontend.json' },
-  @{ Path = 'D:\www\AgentSkillMesh\VibeAgent\repos\docs'; Biome = '../../tooling/biome.frontend.json' },
-  @{ Path = 'D:\www\AgentSkillMesh\VibeAgent\repos\contracts'; Biome = '../../tooling/biome.backend.json' },
-  @{ Path = 'D:\www\AgentSkillMesh\VibeAgent\repos\p2p'; Biome = '../../tooling/biome.backend.json' },
-  @{ Path = 'D:\www\AgentSkillMesh\VibeAgent\repos\shared'; Biome = '../../tooling/biome.base.json' },
-  @{ Path = 'D:\www\LuminaryIoTChain'; Biome = './tooling/biome.base.json' },
-  @{ Path = 'D:\www\DataLuminary\DataLuminary-Platform'; Biome = './tooling/biome.base.json' },
-  @{ Path = 'D:\www\DataLuminary\DataLuminary-Platform\DataTalk'; Biome = '../tooling/biome.backend.json' },
-  @{ Path = 'D:\www\DataLuminary\DataLuminary-Platform\DataView'; Biome = '../tooling/biome.frontend.json' },
-  @{ Path = 'D:\www\DataLuminary\DataLuminary-Platform\ProductWhitePaper'; Biome = '../tooling/biome.frontend.json' }
+  @{ Path = $Meta; Nvmrc = $false; Npmrc = $false; Biome = './tooling/biome.base.json' },
+  @{ Path = (Join-Path $Meta 'docs'); Biome = '../tooling/biome.frontend.json' },
+  @{ Path = (Join-Path $Meta 'identity'); Biome = $null },
+  @{ Path = (Join-Path $Meta 'shared'); Biome = './packages/tooling/biome.base.json' },
+  @{ Path = (Join-Path $Www 'blockyedu'); Biome = './tooling/biome.base.json' },
+  @{ Path = (Join-Path $Www 'blockyedu\server'); Biome = '../tooling/biome.backend.json' },
+  @{ Path = (Join-Path $Www 'blockyedu\code-app-web'); Biome = '../tooling/biome.frontend.json' },
+  @{ Path = (Join-Path $Www 'blockyedu\edu-app-web'); Biome = '../tooling/biome.frontend.json' },
+  @{ Path = (Join-Path $Www 'blockyedu\media-platform'); Biome = '../tooling/biome.backend.json' },
+  @{ Path = (Join-Path $Www 'vistaremote'); Biome = './tooling/biome.base.json' },
+  @{ Path = (Join-Path $Www 'vistaremote\server'); Biome = '../tooling/biome.server.json' },
+  @{ Path = (Join-Path $Www 'vistaremote\web'); Biome = '../tooling/biome.web.json' },
+  @{ Path = (Join-Path $Www 'vistaremote\ai'); Biome = '../tooling/biome.server.json' },
+  @{ Path = (Join-Path $Www 'vistaremote\deploy'); Biome = '../tooling/biome.base.json' },
+  @{ Path = (Join-Path $Www 'vistaremote\desktop'); Biome = '../tooling/biome.desktop.json' },
+  @{ Path = (Join-Path $Www 'vistaremote\docs'); Biome = '../tooling/biome.web.json' },
+  @{ Path = (Join-Path $Www 'vistaremote\mobile'); Biome = '../tooling/biome.mobile.json' },
+  @{ Path = (Join-Path $Www 'vistaremote\shared'); Biome = '../tooling/biome.base.json' },
+  @{ Path = (Join-Path $Www 'doerflow'); Biome = './tooling/biome.base.json' },
+  @{ Path = (Join-Path $Www 'doerflow\repos\api'); Biome = '../../tooling/biome.backend.json' },
+  @{ Path = (Join-Path $Www 'doerflow\repos\web'); Biome = '../../tooling/biome.frontend.json' },
+  @{ Path = (Join-Path $Www 'doerflow\repos\docs'); Biome = '../../tooling/biome.frontend.json' },
+  @{ Path = (Join-Path $Www 'doerflow\repos\contracts'); Biome = '../../tooling/biome.backend.json' },
+  @{ Path = (Join-Path $Www 'doerflow\repos\p2p'); Biome = '../../tooling/biome.backend.json' },
+  @{ Path = (Join-Path $Www 'doerflow\repos\shared'); Biome = '../../tooling/biome.base.json' },
+  @{ Path = (Join-Path $Www 'syncrobrain'); Biome = './tooling/biome.base.json' },
+  @{ Path = (Join-Path $Www 'dataluminary'); Biome = './tooling/biome.base.json' },
+  @{ Path = (Join-Path $Www 'dataluminary\DataTalk'); Biome = '../tooling/biome.backend.json' },
+  @{ Path = (Join-Path $Www 'dataluminary\DataView'); Biome = '../tooling/biome.frontend.json' },
+  @{ Path = (Join-Path $Www 'dataluminary\ProductWhitePaper'); Biome = '../tooling/biome.frontend.json' }
 )
 
 foreach ($repo in $Repos) {
@@ -128,4 +133,4 @@ foreach ($repo in $Repos) {
   }
 }
 
-Write-Host 'Done.'
+Write-Host "Done. (workspace=$Www)"
