@@ -35,13 +35,27 @@ import "@luminaryworks/auth-react/style.css";
 Override layout via `className` / `style` on the root.
 
 ```tsx
+// End-user product login (social on by default)
 <HeadlessLoginPanel
   config={idpConfig}
   productName="DataLuminary"
   mode="redirect"
-  // default "auto" — or ["google","github"] / [] to hide
+  // socialProviders: "auto" | ["google","github"] | []
+/>
+
+// Admin / internal console — hide Experience social connectors
+<HeadlessLoginPanel
+  config={idpConfig}
+  productName="DataLuminary Admin"
+  mode="redirect"
+  showSocialConnectors={false}
 />
 ```
+
+| Prop | Default | Notes |
+|------|---------|--------|
+| `showSocialConnectors` | `true` | `false` skips fetch and hides divider + social buttons |
+| `socialProviders` | `"auto"` | allowlist, or `[]` (same effect as `showSocialConnectors={false}`) |
 
 IdP hosted `/sign-in` social row layout: `node scripts/apply-branding.mjs` (customCss wrap). Enable connectors: `ensure-sign-in-experience.mjs` + `verify-social-direct-signin.mjs`.
 

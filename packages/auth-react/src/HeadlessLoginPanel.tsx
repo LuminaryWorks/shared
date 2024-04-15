@@ -35,7 +35,15 @@ export interface HeadlessLoginPanelProps {
   /** Prefer popup (default) for reauth; use redirect for full-page login. */
   mode?: "popup" | "redirect";
   /**
-   * Social providers:
+   * Show Experience social connectors (Google / GitHub / …).
+   * Default `true`. Set `false` for admin / internal consoles that only allow
+   * password (or enterprise SSO via IdP) — hides divider + social buttons and
+   * skips fetching connectors.
+   * Equivalent to `socialProviders={[]}` when false.
+   */
+  showSocialConnectors?: boolean;
+  /**
+   * Social providers (when `showSocialConnectors` is not `false`):
    * - omit / `"auto"` — load enabled connectors from IdP (google, github, x, …)
    * - `string[]` — only these targets (still prefers IdP logos/names when available)
    * - `[]` — hide social buttons
@@ -117,6 +125,7 @@ export function HeadlessLoginPanel({
   labels: labelsProp,
   returnUrl,
   mode = "popup",
+  showSocialConnectors = true,
   socialProviders = "auto",
   showCancel,
   onCancel,
@@ -139,6 +148,9 @@ export function HeadlessLoginPanel({
   const [loading, setLoading] = useState<"password" | string | null>(null);
   const [error, setError] = useState("");
   const [connectors, setConnectors] = useState<ExperienceSocialConnector[]>([]);
+  const socialEnabled =
+    showSocialConnectors !== false &&
+    !(Array.isArray(socialProviders) && socialProviders.length === 0);
 
   // Browser back from IdP restores bfcache with loading still set → "…".
   useEffect(() => {
@@ -152,7 +164,7 @@ export function HeadlessLoginPanel({
   }, []);
 
   useEffect(() => {
-    if (socialProviders !== "auto" && Array.isArray(socialProviders) && socialProviders.length === 0) {
+    if (!socialEnabled) {
       setConnectors([]);
       return;
     }
@@ -202,7 +214,7 @@ export function HeadlessLoginPanel({
     return () => {
       cancelled = true;
     };
-  }, [config.clientId, config.experienceApiBase, config.issuer, socialProviders]);
+  }, [config.clientId, config.experienceApiBase, config.issuer, socialEnabled, socialProviders]);
 
   const runOidc = async (directSignIn?: string) => {
     if (!configured) throw new Error("IdP not configured");
@@ -268,7 +280,8 @@ export function HeadlessLoginPanel({
   };
 
   const busy = loading !== null;
-  const showSocial = connectors.length > 0;
+  const showSocial = socialEnabled && connectors.length > 0;
+  const showHint = Boolean(labelsProp?.hint) || showSocial;
 
   return (
     <div className={cx(styles.panel, className)} style={panelStyle}>
@@ -320,8 +333,8 @@ export function HeadlessLoginPanel({
               {loading === "password" ? "…" : labels.submitPassword}
             </button>
           </form>
-          <p className={styles.hint}>{labels.hint}</p>
-          
+          {showHint ? <p className={styles.hint}>{labels.hint}</p> : null}
+
           {showSocial ? (
             <div className={styles.divider} aria-hidden>
               <span className={styles.dividerLine} />

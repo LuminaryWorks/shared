@@ -5,7 +5,7 @@
 | 包 | 目录 | 当前版本 | 说明 |
 |----|------|----------|------|
 | `@luminaryworks/auth-core` | `packages/auth-core` | 0.2.1 | NestJS JWKS |
-| `@luminaryworks/auth-react` | `packages/auth-react` | 0.3.0 | Headless + OIDC PKCE |
+| `@luminaryworks/auth-react` | `packages/auth-react` | 0.3.1 | Headless + OIDC PKCE（showSocialConnectors） |
 | `@luminaryworks/auth-dev-proxy` | `packages/auth-dev-proxy` | 0.1.0 | 同域 `/oidc` + Experience 代理 |
 | `@luminaryworks/pal` | `packages/pal` | 0.2.0 | 权限抽象层 |
 | `@luminaryworks/entitlement-client` | `packages/entitlement-client` | 0.1.0 | 权益客户端 |
@@ -52,7 +52,7 @@ CI 用 `actions/setup-node` 的 `registry-url` + `NODE_AUTH_TOKEN` secret。
 
 ```bash
 pnpm add @luminaryworks/auth-core@^0.2.1
-pnpm add @luminaryworks/auth-react@^0.3.0
+pnpm add @luminaryworks/auth-react@^0.3.1
 ```
 
 **本地改 shared 源码时**：可用 `pnpm.overrides` 临时回退 `file:`，见 [MIGRATION.md](./MIGRATION.md)。日常与测试环境一律用 registry 版本。

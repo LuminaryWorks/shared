@@ -7,7 +7,7 @@
 | 包 | 版本 | Registry |
 |----|------|----------|
 | `@luminaryworks/auth-core` | 0.2.1 | ✅ |
-| `@luminaryworks/auth-react` | 0.3.0 | ✅ |
+| `@luminaryworks/auth-react` | 0.3.1 | ✅ |
 | `@luminaryworks/auth-dev-proxy` | 0.1.0 | ✅ |
 | `@luminaryworks/pal` | 0.2.0 | ✅ |
 | `@luminaryworks/entitlement-client` | 0.1.0 | ✅ |
