@@ -1,6 +1,6 @@
 {
   "name": "@luminaryworks/auth-core",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "license": "Polyform-Noncommercial-1.0.0",
   "description": "LuminaryWorks unified OIDC JWT verification for NestJS backends",
   "repository": {
@@ -9,14 +9,15 @@
     "directory": "packages/auth-core"
   },
   "publishConfig": {
-    "registry": "https://npm.pkg.github.com",
-    "access": "restricted"
+    "registry": "https://registry.npmjs.org",
+    "access": "public"
   },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",

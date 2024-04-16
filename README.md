@@ -9,8 +9,8 @@
 | 包 | 状态 | 说明 |
 |----|------|------|
 | `@luminary/tooling` | workspace 内部 | Biome preset + tsconfig base（不发布） |
-| `@luminaryworks/auth-core` | ✅ 0.2.1 | OIDC JWKS 验签（NestJS） |
-| `@luminaryworks/auth-react` | ✅ 0.3.0 | Headless + OIDC PKCE（React SPA） |
+| `@luminaryworks/auth-core` | ✅ 0.2.2 | OIDC JWKS 验签（NestJS） |
+| `@luminaryworks/auth-react` | ✅ 0.3.1 | Headless + OIDC PKCE（React SPA） |
 | `@luminaryworks/auth-dev-proxy` | ✅ 0.1.0 | 同域 `/oidc` + Experience 开发代理 |
 | `@luminaryworks/pal` | ✅ 0.2.0 | 权限抽象层 |
 | `@luminaryworks/notification` | ✅ 0.1.0 | NotificationModule（SMTP） |
@@ -28,19 +28,16 @@ pnpm check      # 递归类型检查
 
 ## 发布 / 消费
 
-GitHub Packages（`@luminaryworks` scope）。见 [PUBLISH.md](./PUBLISH.md)、[MIGRATION.md](./MIGRATION.md)。
+公开包发到 **npmjs.com**（`@luminaryworks` scope）。见 [PUBLISH.md](./PUBLISH.md)、[MIGRATION.md](./MIGRATION.md)。GitHub 仓库权限不变。
 
 ```bash
-# CI：Actions → Publish @luminaryworks packages → Run workflow
-# 本地：npm publish --registry https://npm.pkg.github.com（需 write:packages）
+# CI：push 到 LuminaryWorks/shared 的 master/main 即 OIDC 自动发新版本（无需 NPM_TOKEN）
+# 本地：pnpm publish:packages（需 npm login + 2FA）
 ```
 
 消费方：
 
 ```ini
-# 仓库 .npmrc（可提交）
-@luminaryworks:registry=https://npm.pkg.github.com
-
-# 用户 ~/.npmrc（勿提交）
-//npm.pkg.github.com/:_authToken=<PAT read:packages>
+# 仓库 .npmrc（可提交；覆盖本机仍指向 GitHub Packages 的 ~/.npmrc）
+@luminaryworks:registry=https://registry.npmjs.org
 ```

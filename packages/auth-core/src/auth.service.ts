@@ -41,7 +41,12 @@ export class LuminaryAuthService {
     const mode = this.mode;
 
     if (mode === "legacy") {
-      const secret = this.options.legacyJwtSecret ?? "dev-change-me";
+      const secret = this.options.legacyJwtSecret?.trim();
+      if (!secret || secret === "dev-change-me") {
+        throw new UnauthorizedException(
+          "mode=legacy requires an explicit legacyJwtSecret (do not use the old public default)",
+        );
+      }
       const payload = verifyLegacyJwt(token, secret);
       if (!payload) throw new UnauthorizedException("Invalid or expired token");
       return { ...payload, rawToken: token };

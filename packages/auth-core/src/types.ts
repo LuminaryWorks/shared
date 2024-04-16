@@ -9,7 +9,7 @@ export interface LuminaryAuthModuleOptions {
   audience?: string | string[];
   /** Override JWKS URI; default from OIDC discovery */
   jwksUri?: string;
-  /** Dev-only HS256 secret when mode=legacy */
+  /** Required HS256 secret when mode=legacy. There is no built-in default. */
   legacyJwtSecret?: string;
   /** JWT claim paths for PAL / guards */
   claimsMapping?: {

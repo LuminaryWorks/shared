@@ -1,5 +1,3 @@
-# Registry only in repo (safe to commit).
-# Put auth in ~/.npmrc (pnpm does not expand ${NODE_AUTH_TOKEN} from project .npmrc):
-#   //npm.pkg.github.com/:_authToken=ghp_...
-# CI: actions/setup-node with registry-url + NODE_AUTH_TOKEN secret.
-@luminaryworks:registry=https://npm.pkg.github.com
+# Public @luminaryworks/* packages on npmjs (safe to commit).
+# No GitHub Packages token required.
+@luminaryworks:registry=https://registry.npmjs.org

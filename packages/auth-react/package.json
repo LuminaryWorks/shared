@@ -9,8 +9,8 @@
     "directory": "packages/auth-react"
   },
   "publishConfig": {
-    "registry": "https://npm.pkg.github.com",
-    "access": "restricted"
+    "registry": "https://registry.npmjs.org",
+    "access": "public"
   },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -29,7 +29,8 @@
   ],
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
     "build": "tsup",

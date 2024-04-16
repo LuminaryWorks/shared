@@ -9,6 +9,7 @@
     "build": "pnpm -r --if-present run build",
     "check": "pnpm -r --if-present run check",
     "publish:packages": "pnpm --filter @luminaryworks/auth-core --filter @luminaryworks/auth-react --filter @luminaryworks/auth-dev-proxy --filter @luminaryworks/pal --filter @luminaryworks/notification --filter @luminaryworks/entitlement-client publish --no-git-checks",
+    "publish:if-new": "node scripts/publish-if-new.mjs",
     "test": "pnpm -r --if-present run test"
   },
   "devDependencies": {

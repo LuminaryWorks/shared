@@ -1,54 +1,72 @@
-# LuminaryWorks 组织 — GitHub Packages 开通
+# LuminaryWorks 组织 — npmjs Trusted Publishing（OIDC）
 
-CI 发布失败 `403 installation does not exist` 时，需组织 **Owner** 完成以下配置。
+`@luminaryworks/*` 发到 **npmjs.com 公开包**。GitHub Actions 用 [Trusted Publishing](https://docs.npmjs.com/trusted-publishers/)（OIDC），**CI 不保存 npm token**。
 
-## 1. Actions 写入权限
+**不要改 GitHub 仓库可见性**：本文件只处理 npm 发包。
 
-**Organization → Settings → Actions → General → Workflow permissions**
+## 1. npmjs 组织 / scope
 
-- 选择 **Read and write permissions**
-- 勾选 **Allow GitHub Actions to create and approve pull requests**（可选）
+首次发布需要 `@luminaryworks` scope 的管理权：
 
-## 2. Packages 创建策略
+- 若尚无组织：<https://www.npmjs.com/org/create>（公开包可用免费 org，名称 `luminaryworks`）
+- 把 GitHub 发布所用的 npm 账号加成组织 Owner / 有 publish 权限的成员
 
-**Organization → Settings → Packages**
+## 2. 绑定 Trusted Publisher（每个包一次）
 
-- **Package creation**：允许成员发布（或限制为指定团队）
-- 确认 `LuminaryWorks/shared` 仓库可创建 `@luminaryworks/*` 包
+在 npmjs 包设置（或组织 **Add package** 的 pending publisher）填写：
 
-## 3. 仓库 Actions 权限
+| 字段 | 必须等于 |
+|------|----------|
+| Organization or user | `LuminaryWorks` |
+| Repository | `shared` |
+| Workflow filename | `publish-packages.yml` |
+| Environment | 留空 |
+| Allowed actions | `npm publish` |
 
-**Repository `shared` → Settings → Actions → General**
+要对这六个名字都配一遍：
 
-- Workflow permissions：**Read and write**
-- 或继承组织默认（须为 Read and write）
+- `@luminaryworks/auth-core`
+- `@luminaryworks/auth-react`
+- `@luminaryworks/auth-dev-proxy`
+- `@luminaryworks/pal`
+- `@luminaryworks/entitlement-client`
+- `@luminaryworks/notification`
 
-## 4. 重新发布
+包已存在时也可用：
 
 ```bash
-gh workflow run publish-packages.yml --repo LuminaryWorks/shared
+npm trust github @luminaryworks/auth-core --repo LuminaryWorks/shared --file publish-packages.yml --allow-publish -y
 ```
 
-或创建 Release tag `v0.2.0`。
+`npm trust` 要求账号开 2FA；**bypass-2FA 的 Granular Token 不能用来跑 trust**。
 
-## 5. 消费方 CI / 本地 PAT
+## 3. CI（`shared` 仓库）
 
-若消费方 workflow 使用 `NODE_AUTH_TOKEN: ${{ secrets.GH_PACKAGES_READ_TOKEN || secrets.GITHUB_TOKEN }}`：
-当默认 `GITHUB_TOKEN` 权限不足时，在仓库 **Settings → Secrets** 添加 `GH_PACKAGES_READ_TOKEN`（Classic PAT，scope 含 `read:packages`）。
+Workflow：`.github/workflows/publish-packages.yml`
 
-本地 `~/.npmrc`（勿提交 token 到仓库 `.npmrc`）：
+- `permissions.id-token: write`
+- **没有** `NPM_TOKEN` / `NODE_AUTH_TOKEN`
+- 推送到 `master` 或 `main` 即尝试发布；版本已在 npmjs 上则跳过
+
+不需要在 GitHub **Settings → Secrets** 添加任何 npm token。
+
+## 4. 消费方
+
+仓库 `.npmrc`：
+
+```ini
+engine-strict=true
+@luminaryworks:registry=https://registry.npmjs.org
+```
+
+公开包不需要 `read:packages` PAT。
+
+## 5. 误装到 GitHub Packages 时
+
+若 `~/.npmrc` 仍有：
 
 ```ini
 @luminaryworks:registry=https://npm.pkg.github.com
-//npm.pkg.github.com/:_authToken=<PAT>
 ```
 
-仓库内只需：
-
-```ini
-@luminaryworks:registry=https://npm.pkg.github.com
-```
-
-## 6. 过渡期
-
-在包未成功发布前，五消费方继续使用 `file:../../../LuminaryWorks/shared/packages/auth-core` + 本地 `pnpm build`。
+请改为 `https://registry.npmjs.org`。

@@ -1,13 +1,20 @@
 name: Publish @luminaryworks packages
 
+# Trusted Publishing (OIDC). No NPM_TOKEN.
+# npmjs Trusted Publisher must match:
+#   Organization or user: LuminaryWorks
+#   Repository: shared
+#   Workflow filename: publish-packages.yml
+#   Environment: (leave empty)
+
 on:
-  release:
-    types: [published]
+  push:
+    branches: [master, main]
   workflow_dispatch:
 
 permissions:
   contents: read
-  packages: write
+  id-token: write
 
 jobs:
   publish:
@@ -20,15 +27,15 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-          registry-url: https://npm.pkg.github.com
-          scope: "@luminaryworks"
+          # Do not set registry-url / NODE_AUTH_TOKEN — that blocks OIDC.
+
+      - name: Ensure npm CLI supports trusted publishing
+        run: npm install -g npm@latest
 
       - name: Install and build
         run: |
           pnpm install --frozen-lockfile
           pnpm build
 
-      - name: Publish @luminaryworks packages
-        run: pnpm publish:packages
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish new versions to npmjs (OIDC)
+        run: node scripts/publish-if-new.mjs
