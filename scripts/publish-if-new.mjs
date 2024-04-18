@@ -30,16 +30,17 @@ function npmViewVersion(name) {
 }
 
 function publishDir(pkgDir) {
+  const env = { ...process.env };
+  // Empty NODE_AUTH_TOKEN still disables OIDC; the key must be absent.
+  delete env.NODE_AUTH_TOKEN;
+  delete env.NPM_TOKEN;
+  delete env.npm_config__authToken;
   const r = spawnSync("npm", ["publish", "--access", "public"], {
     cwd: pkgDir,
     encoding: "utf8",
     shell: true,
     stdio: "inherit",
-    env: {
-      ...process.env,
-      NODE_AUTH_TOKEN: "",
-      NPM_TOKEN: "",
-    },
+    env,
   });
   return r.status === 0;
 }
