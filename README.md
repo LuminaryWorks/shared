@@ -35,9 +35,4 @@ pnpm check      # 递归类型检查
 # 本地：pnpm publish:packages（需 npm login + 2FA）
 ```
 
-消费方：
-
-```ini
-# 仓库 .npmrc（可提交；覆盖本机仍指向 GitHub Packages 的 ~/.npmrc）
-@luminaryworks:registry=https://registry.npmjs.org
-```
+消费方：`@luminaryworks/*` 走 npmjs 默认源，仓库 `.npmrc` 不必指定该 scope 的 registry。若本机 `~/.npmrc` 仍指向 GitHub Packages，删掉 `@luminaryworks:registry=https://npm.pkg.github.com` 即可。

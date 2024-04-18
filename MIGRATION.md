@@ -17,14 +17,13 @@
 
 ## 消费方 `.npmrc`
 
+`@luminaryworks/*` 已是 npmjs 公开包，**不要**再写 `@luminaryworks:registry`。仓库最多保留：
+
 ```ini
 engine-strict=true
-@luminaryworks:registry=https://registry.npmjs.org
 ```
 
-删除 `@luminaryworks:registry=https://npm.pkg.github.com` 与对应 `_authToken`。公开包不需要 GitHub Packages 凭证。
-
-若本机 `~/.npmrc` 仍有 `@luminaryworks:registry=https://npm.pkg.github.com`，请改为 `https://registry.npmjs.org`，或依赖仓库内 `.npmrc` 覆盖。
+若本机 `~/.npmrc` 仍有 `@luminaryworks:registry=https://npm.pkg.github.com`，删掉该行即可。
 
 ## 本地改 shared 源码（可选）
 

@@ -52,12 +52,7 @@ Workflow：`.github/workflows/publish-packages.yml`
 
 ## 4. 消费方
 
-仓库 `.npmrc`：
-
-```ini
-engine-strict=true
-@luminaryworks:registry=https://registry.npmjs.org
-```
+仓库 `.npmrc` 只需 `engine-strict=true`（若已有）。`@luminaryworks/*` 走 npmjs 默认源，不必再写 `@luminaryworks:registry`。
 
 公开包不需要 `read:packages` PAT。
 
@@ -69,4 +64,4 @@ engine-strict=true
 @luminaryworks:registry=https://npm.pkg.github.com
 ```
 
-请改为 `https://registry.npmjs.org`。
+请删掉该行，让 `@luminaryworks/*` 走 npmjs 默认源。

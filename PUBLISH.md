@@ -69,11 +69,10 @@ pnpm publish:packages
 
 ## 消费方安装
 
-公开包，**不再需要** GitHub Packages PAT。仓库可提交：
+公开包，**不再需要** GitHub Packages PAT，也不必在 `.npmrc` 指定 `@luminaryworks:registry`。仓库可保留：
 
 ```ini
 engine-strict=true
-@luminaryworks:registry=https://registry.npmjs.org
 ```
 
 ```bash
