@@ -1,34 +1,29 @@
-# @luminary/pal
+# @luminaryworks/pal
 
-LuminaryWorks **Permission Abstraction Layer** — NestJS 库。
-
-## 用途
-
-- 业务代码只依赖 PAL 接口，不直接绑定蓝鲸 / LDAP / 本地 RBAC 表
-- 通过 `PAL_ADAPTER` 环境变量或 `PalModule.forRoot()` 切换权限源
-
+LuminaryWorks **Permission Abstraction Layer** �?NestJS 库�?
+## 用�?
+- 业务代码只依�?PAL 接口，不直接绑定蓝鲸 / LDAP / 本地 RBAC �?- 通过 `PAL_ADAPTER` 环境变量�?`PalModule.forRoot()` 切换权限�?
 ## 安装（Monorepo 内）
 
 ```bash
 cd packages/luminary-pal && npm install && npm run build
 ```
 
-各产品 `package.json` 添加：
-
+各产�?`package.json` 添加�?
 ```json
-"@luminary/pal": "file:../../packages/luminary-pal"
+"@luminaryworks/pal": "file:../../packages/luminary-pal"
 ```
 
 ## 用法
 
 ```typescript
-import { PalModule, PalPermissionGuard, RequirePalPermission } from "@luminary/pal";
+import { PalModule, PalPermissionGuard, RequirePalPermission } from "@luminaryworks/pal";
 
 @Module({
   imports: [
     PalModule.forRoot({
       adapter: process.env.PAL_ADAPTER === "bkiam" ? "bkiam" : "native",
-      rbacPort: myRbacPort, // 实现 NativeRbacPort，包装现有 RbacService
+      rbacPort: myRbacPort, // 实现 NativeRbacPort，包装现�?RbacService
     }),
   ],
 })

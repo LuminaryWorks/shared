@@ -1,13 +1,13 @@
 {
-  "name": "@luminary/shared-workspace",
+  "name": "@luminaryworks/shared-workspace",
   "version": "0.0.0",
   "private": true,
-  "description": "LuminaryWorks shared libraries â€” pnpm workspace for @luminary/* packages",
+  "description": "LuminaryWorks shared libraries â€?pnpm workspace for @luminaryworks/* packages",
   "packageManager": "pnpm@9.15.0",
   "scripts": {
     "build": "pnpm -r --if-present run build",
     "check": "pnpm -r --if-present run check",
-    "publish:packages": "pnpm --filter @luminary/auth-core --filter @luminary/auth-react --filter @luminary/pal publish --no-git-checks"
+    "publish:packages": "pnpm --filter @luminaryworks/auth-core --filter @luminaryworks/auth-react --filter @luminaryworks/pal publish --no-git-checks"
   },
   "devDependencies": {
     "typescript": "^5.7.0"

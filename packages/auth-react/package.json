@@ -1,5 +1,5 @@
 {
-  "name": "@luminary/auth-react",
+  "name": "@luminaryworks/auth-react",
   "version": "0.2.0",
   "description": "LuminaryWorks unified OIDC SPA client (Logto / enterprise IdP)",
   "repository": {
@@ -26,7 +26,7 @@
     "react": "^18.0.0 || ^19.0.0"
   },
   "devDependencies": {
-    "@luminary/tooling": "workspace:*",
+    "@luminaryworks/tooling": "workspace:*",
     "@types/react": "^19.0.0",
     "react": "^19.0.0",
     "typescript": "^5.7.0"

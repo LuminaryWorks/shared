@@ -18,7 +18,7 @@ importers:
         specifier: ^6.0.11
         version: 6.2.3
     devDependencies:
-      '@luminary/tooling':
+      '@luminaryworks/tooling':
         specifier: workspace:*
         version: link:../tooling
       '@nestjs/common':
@@ -43,7 +43,7 @@ importers:
         specifier: ^3.2.0
         version: 3.5.0
     devDependencies:
-      '@luminary/tooling':
+      '@luminaryworks/tooling':
         specifier: workspace:*
         version: link:../tooling
       '@types/react':
@@ -58,7 +58,7 @@ importers:
 
   packages/pal:
     devDependencies:
-      '@luminary/tooling':
+      '@luminaryworks/tooling':
         specifier: workspace:*
         version: link:../tooling
       '@nestjs/common':

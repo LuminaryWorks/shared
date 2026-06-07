@@ -1,5 +1,5 @@
 {
-  "name": "@luminary/tooling",
+  "name": "@luminaryworks/tooling",
   "version": "0.1.0",
   "description": "LuminaryWorks shared Biome preset and tsconfig base",
   "files": ["biome.base.json", "biome.backend.json", "biome.frontend.json", "tsconfig.base.json"],
