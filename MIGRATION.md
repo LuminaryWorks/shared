@@ -36,7 +36,13 @@ cd LuminaryWorks/shared && pnpm build
 pnpm install && pnpm run build   # 或 tsc --noEmit
 ```
 
-**待办（发布）**：GitHub Packages 就绪后，将 `file:` 换为 `"@luminary/auth-core": "^0.2.0"`。
+## LW-S4 — GitHub Packages 发布
+
+- 版本 **0.2.0**，`publishConfig` → `npm.pkg.github.com`
+- CI：`.github/workflows/publish-packages.yml`（`workflow_dispatch` 或 Release）
+- 说明：[PUBLISH.md](./PUBLISH.md)
+
+发包后消费方可将 `file:` 换为 `"@luminary/auth-core": "^0.2.0"` + 根目录 `.npmrc`（见 `.npmrc.example`）。
 
 ## LW-S3 — 清理 ✅
 

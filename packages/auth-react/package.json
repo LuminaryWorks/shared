@@ -1,13 +1,23 @@
 {
   "name": "@luminary/auth-react",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "LuminaryWorks unified OIDC SPA client (Logto / enterprise IdP)",
-  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/LuminaryWorks/shared.git",
+    "directory": "packages/auth-react"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "restricted"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "files": ["dist", "README.md"],
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "check": "tsc -p tsconfig.json --noEmit"
+    "check": "tsc -p tsconfig.json --noEmit",
+    "prepublishOnly": "pnpm run build"
   },
   "dependencies": {
     "oidc-client-ts": "^3.2.0"

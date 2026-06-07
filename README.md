@@ -25,4 +25,9 @@ pnpm check      # 递归类型检查
 
 ## 发布
 
-GitHub Packages，scope `@luminary`。版本遵循 Semver。
+GitHub Packages（`@luminary` scope），当前 **0.2.0**。见 [PUBLISH.md](./PUBLISH.md)。
+
+```bash
+# CI：Actions → Publish @luminary packages → Run workflow
+pnpm publish:packages   # 本地需 PAT write:packages
+```

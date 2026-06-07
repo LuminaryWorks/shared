@@ -6,7 +6,8 @@
   "packageManager": "pnpm@9.15.0",
   "scripts": {
     "build": "pnpm -r --if-present run build",
-    "check": "pnpm -r --if-present run check"
+    "check": "pnpm -r --if-present run check",
+    "publish:packages": "pnpm --filter @luminary/auth-core --filter @luminary/auth-react --filter @luminary/pal publish --no-git-checks"
   },
   "devDependencies": {
     "typescript": "^5.7.0"
