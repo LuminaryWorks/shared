@@ -38,14 +38,11 @@ pnpm install && pnpm run build   # 或 tsc --noEmit
 
 **待办（发布）**：GitHub Packages 就绪后，将 `file:` 换为 `"@luminary/auth-core": "^0.2.0"`。
 
-## LW-S3 — 清理
+## LW-S3 — 清理 ✅
 
-```bash
-# 五仓全部切换且 CI 绿后
-git -C DataLuminary-Platform rm -r packages/
-```
+已删除 `DataLuminary-Platform/packages/` 镜像；规格见 `spec/development/shared-packages.md`。
 
-打 tag `pre-packages-removal` 备份。
+打 tag `pre-packages-removal` 备份（可选）。
 
 ## 回滚
 
