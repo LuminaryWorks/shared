@@ -2,48 +2,41 @@
 
 将 `@luminary/auth-core`、`auth-react`、`pal` 从 `DataLuminary-Platform/packages/` 迁入本工作区，并切换五消费方依赖。**分阶段、可回滚、不破坏构建。**
 
-## 消费方现状（file: 引用）
+## 消费方现状（LW-S2 已切换至 shared）
 
-| 消费方 | 当前依赖路径 |
-|--------|--------------|
-| DataTalk | `file:../packages/luminary-auth-core` |
-| VibeEdu server | `@luminary/auth-core`（file:） |
-| VibeAgent api | `file:` 相对路径 |
-| VistaRemote server | `file:../../DataLuminary/DataLuminary-Platform/packages/luminary-auth-core` |
-| iot-gateway | `file:../../../DataLuminary/DataLuminary-Platform/packages/luminary-auth-core` |
+| 消费方 | 依赖路径 |
+|--------|----------|
+| DataTalk | `file:../../../LuminaryWorks/shared/packages/auth-core` |
+| VibeEdu server | `file:../../../LuminaryWorks/shared/packages/auth-core` |
+| VibeAgent api | `file:../../../../LuminaryWorks/shared/packages/auth-core` |
+| VistaRemote server | `file:../../LuminaryWorks/shared/packages/auth-core` |
+| iot-gateway | `file:../../../LuminaryWorks/shared/packages/auth-core` |
 
-## LW-S1 — 源码迁入 + 发布
+> 安装前在 `LuminaryWorks/shared` 执行 `pnpm build`，确保 `auth-core/dist` 存在。
 
-```bash
-# 1. 复制源码（保留 git 历史可用 git filter-repo，简单起见直接复制）
-cp -r DataLuminary-Platform/packages/luminary-auth-core  shared/packages/auth-core
-cp -r DataLuminary-Platform/packages/luminary-auth-react shared/packages/auth-react
-cp -r DataLuminary-Platform/packages/luminary-pal        shared/packages/pal
+## LW-S1 — 源码迁入 + 发布 ✅
 
-# 2. 各包 extends 共享 tsconfig；workspace 引用 @luminary/tooling
-# 3. 配置 GitHub Packages 发布
-cd shared && pnpm install && pnpm build
-pnpm -r publish --access restricted
-```
+已完成（2026-06）：
 
-DataLuminary `packages/` 暂保留为镜像，标 `@deprecated`，指向 shared。
+- `packages/auth-core`、`auth-react`、`pal` 源码已迁入本工作区
+- 各包 `tsconfig` extends `@luminary/tooling`
+- `pnpm install && pnpm build` 通过
 
-## LW-S2 — 消费方切换（逐仓一 PR）
+DataLuminary `packages/` 暂保留为镜像（见 `DEPRECATED.md`），指向本仓。
 
-每个消费方：
+**待办（发布）**：配置 GitHub Packages 后 `pnpm -r publish --access restricted`。
 
-```jsonc
-// before
-"@luminary/auth-core": "file:.../packages/luminary-auth-core"
-// after
-"@luminary/auth-core": "^0.2.0"
-```
+## LW-S2 — 消费方切换 ✅
+
+已将五消费方 `file:` 路径从 `DataLuminary-Platform/packages/` 改为 `LuminaryWorks/shared/packages/auth-core`。
 
 ```bash
-pnpm install && pnpm run lint   # 或 tsc --noEmit，确认 CI 绿
+cd LuminaryWorks/shared && pnpm build
+# 各消费方
+pnpm install && pnpm run build   # 或 tsc --noEmit
 ```
 
-顺序建议：iot-gateway → VistaRemote → VibeAgent → VibeEdu → DataTalk（影响面从小到大）。
+**待办（发布）**：GitHub Packages 就绪后，将 `file:` 换为 `"@luminary/auth-core": "^0.2.0"`。
 
 ## LW-S3 — 清理
 

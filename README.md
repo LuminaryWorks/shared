@@ -9,11 +9,11 @@
 | 包 | 状态 | 说明 |
 |----|------|------|
 | `@luminary/tooling` | ✅ 就位 | Biome preset + tsconfig base |
-| `@luminary/auth-core` | ⏳ LW-S1 迁入 | OIDC JWKS 验签（NestJS） |
-| `@luminary/auth-react` | ⏳ LW-S1 迁入 | OIDC PKCE（React SPA） |
-| `@luminary/pal` | ⏳ LW-S1 迁入 | 权限抽象层 |
+| `@luminary/auth-core` | ✅ LW-S1 已迁入 | OIDC JWKS 验签（NestJS） |
+| `@luminary/auth-react` | ✅ LW-S1 已迁入 | OIDC PKCE（React SPA） |
+| `@luminary/pal` | ✅ LW-S1 已迁入 | 权限抽象层 |
 
-> `auth-core` / `auth-react` / `pal` 当前源码仍在 `DataLuminary-Platform/packages/`，按 [MIGRATION.md](./MIGRATION.md) 分阶段迁入，避免破坏五产品构建。
+> `DataLuminary-Platform/packages/` 暂保留为**镜像**（标 `@deprecated`），五消费方按 [MIGRATION.md](./MIGRATION.md) 在 LW-S2 切换依赖。
 
 ## 开发
 

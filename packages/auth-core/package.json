@@ -1,0 +1,29 @@
+{
+  "name": "@luminary/auth-core",
+  "version": "0.1.0",
+  "description": "LuminaryWorks unified OIDC JWT verification for NestJS backends",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist", "README.md"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "jose": "^6.0.11"
+  },
+  "peerDependencies": {
+    "@nestjs/common": "^10.0.0 || ^11.0.0",
+    "@nestjs/core": "^10.0.0 || ^11.0.0",
+    "reflect-metadata": "^0.2.0"
+  },
+  "devDependencies": {
+    "@luminary/tooling": "workspace:*",
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/core": "^11.0.0",
+    "@types/node": "^22.0.0",
+    "reflect-metadata": "^0.2.2",
+    "typescript": "^5.7.0"
+  }
+}
