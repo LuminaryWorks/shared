@@ -1,4 +1,4 @@
-name: Publish @luminary packages
+name: Publish @luminaryworks packages
 
 on:
   release:
@@ -29,9 +29,6 @@ jobs:
           pnpm build
 
       - name: Publish auth-core, auth-react, pal
-        run: |
-          pnpm --filter @luminary/auth-core publish --no-git-checks
-          pnpm --filter @luminary/auth-react publish --no-git-checks
-          pnpm --filter @luminary/pal publish --no-git-checks
+        run: pnpm publish:packages
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
