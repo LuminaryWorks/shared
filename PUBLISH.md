@@ -17,6 +17,8 @@
 
 Workflow 使用 `GITHUB_TOKEN` 写入 `https://npm.pkg.github.com`。
 
+若 CI 报 `403 installation does not exist`，见 [docs/org-packages-setup.md](./docs/org-packages-setup.md)（组织 Owner 配置 Packages + Actions 写权限）。
+
 ## 本地发布
 
 ```bash

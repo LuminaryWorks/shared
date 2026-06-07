@@ -44,6 +44,8 @@ pnpm install && pnpm run build   # 或 tsc --noEmit
 
 发包后消费方可将 `file:` 换为 `"@luminary/auth-core": "^0.2.0"` + 根目录 `.npmrc`（见 `.npmrc.example`）。
 
+> **状态**：CI workflow 已就绪；首次发布待组织 [Packages 权限](./docs/org-packages-setup.md) 开通后 `workflow_dispatch`。
+
 ## LW-S3 — 清理 ✅
 
 已删除 `DataLuminary-Platform/packages/` 镜像；规格见 `spec/development/shared-packages.md`。
