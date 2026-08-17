@@ -65,3 +65,18 @@ Workflow：`.github/workflows/publish-packages.yml`
 ```
 
 请删掉该行，让 `@luminaryworks/*` 走 npmjs 默认源。
+
+## 6. 兄弟产品：`@vistaremote/*`（VistaRemote 组织）
+
+VistaRemote 协议包 `@vistaremote/shared` 与 LuminaryWorks 相同模式：**npmjs 公开包 + OIDC**，**不再** 使用 GitHub Packages 或 Meta-Repo `file:../shared`。
+
+| 字段 | 必须等于 |
+|------|----------|
+| Organization or user | `VistaRemote` |
+| Repository | `shared` |
+| Workflow filename | `release.yml` |
+| Environment | 留空 |
+
+包名：`@vistaremote/shared`。详见 [VistaRemote/shared PUBLISH.md](https://github.com/VistaRemote/shared/blob/main/PUBLISH.md)。
+
+消费方 `.npmrc` 只需 `engine-strict=true`；**不要** 写 `@vistaremote:registry=https://npm.pkg.github.com`。
