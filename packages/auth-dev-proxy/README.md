@@ -8,7 +8,7 @@ does **not** require Auth Gateway (`:3010`) during local development.
 ## Rules
 
 - Upstream defaults to Logto `http://localhost:3001` (`AUTH_IDP_PROXY_TARGET` / gateway override).
-- Discovery JSON: keep `issuer` + `authorization_endpoint` on Logto; rewrite token/jwks/userinfo to the SPA origin.
+- Discovery JSON: keep `issuer` + `authorization_endpoint` on Logto (force them back if Logto emitted the SPA host via `X-Forwarded-Host`); rewrite token/jwks/userinfo to the SPA origin.
 - Rewrites `Location` / strips cookie `Domain` so Experience + consent hops stay on the SPA origin.
 - Proxy config emits both hpm v2 (`onProxyRes`) and v3+/v4 (`on.proxyRes`) hooks for Vite and Rsbuild 2.
 
@@ -76,3 +76,5 @@ Also mount (same handler pattern) so Headless cookies and SIE stay same-origin:
 
 `forwardIdpFetch` returns a null body for HTTP 204/205/304 (Logto Experience `PUT /api/experience` is 204)
 and strips hop-by-hop headers (`Expect`, `Connection`, …) so Undici/Next.js upstream `fetch` does not throw.
+Discovery requests also drop `X-Forwarded-Host` so Logto does not advertise `authorization_endpoint` on the SPA origin
+(that made Google/GitHub stick on `/direct/social/*` with a broken Experience shell).

@@ -24,7 +24,7 @@ On first 401: try refresh → else open reauth UI (overlay + OIDC **popup**, not
 
 ## Headless login panel
 
-Branded panel with **social buttons** (auto-loaded from IdP `socialSignInConnectorTargets` — google / github / x / …) plus **unified account** password. Social uses `direct_sign_in=social:<target>`.
+Branded panel with **social buttons** (auto-loaded from IdP Experience `socialConnectors` — google / github / x / …) plus **unified account** password. Social uses `direct_sign_in=social:<target>`. Buttons are hidden when the IdP has no social connectors (do not invent Google/GitHub — that dumped users on Logto `/sign-in`).
 
 Styles ship as **CSS Modules (SCSS)**. The built bundle auto-injects panel CSS in the browser. Optional explicit import (SSR / style control):
 

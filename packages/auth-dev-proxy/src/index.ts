@@ -50,6 +50,11 @@ const DEFAULT_GATEWAY = "http://localhost:3010";
  * Keep authorize/issuer on Logto in discovery so JWT `iss` and hosted UI stay correct.
  * Token/jwks/userinfo rewrite to SPA. Headless password bootstrap rewrites authorize
  * to the SPA origin in `@luminaryworks/auth-react` so interaction cookies stick on the SPA.
+ *
+ * Social (`direct_sign_in`) must hit Logto `/oidc/auth` so `/direct/social/*` runs on
+ * `:3001` (Experience JS + cookies). Next.js `forwardIdpFetch` often receives
+ * `X-Forwarded-Host: <spa>` — Logto then *emits* SPA authorize URLs. Skipping a
+ * rewrite is not enough; pin these fields back onto the IdP origin.
  */
 const KEEP_ON_IDP = new Set([
   "issuer",
@@ -87,8 +92,21 @@ function decompressIfNeeded(buf: Buffer, encoding: string | undefined): Buffer {
   return buf;
 }
 
+function pinToOrigin(url: string, origin: string): string {
+  try {
+    const parsed = new URL(url);
+    const target = new URL(origin);
+    parsed.protocol = target.protocol;
+    parsed.host = target.host;
+    return parsed.toString();
+  } catch {
+    return url;
+  }
+}
+
 /**
  * Keep authorize/issuer on Logto; rewrite token/jwks/userinfo to SPA origin.
+ * KEEP_ON_IDP fields are forced onto Logto even when upstream already used the SPA host.
  */
 export function rewriteOidcDiscoveryJson(text: string, options: IdpDevProxyOptions): string {
   const spaOrigin = options.spaOrigin.replace(/\/$/, "");
@@ -98,7 +116,17 @@ export function rewriteOidcDiscoveryJson(text: string, options: IdpDevProxyOptio
     const data = JSON.parse(text) as Record<string, unknown>;
     for (const [key, value] of Object.entries(data)) {
       if (typeof value !== "string") continue;
-      if (KEEP_ON_IDP.has(key)) continue;
+      if (KEEP_ON_IDP.has(key)) {
+        data[key] = pinToOrigin(
+          value
+            .replaceAll(spaOrigin, logtoOrigin)
+            .replaceAll(gatewayOrigin, logtoOrigin)
+            .replaceAll("http://127.0.0.1:3001", logtoOrigin)
+            .replaceAll("http://127.0.0.1:3010", logtoOrigin),
+          logtoOrigin,
+        );
+        continue;
+      }
       data[key] = value
         .replaceAll(gatewayOrigin, spaOrigin)
         .replaceAll(logtoOrigin, spaOrigin)
@@ -248,7 +276,7 @@ export function createIdpDevProxyMap(
 export async function forwardIdpFetch(
   request: Request,
   options: IdpDevProxyOptions & {
-    mountPath: IdpDevProxyPath;
+    mountPath?: IdpDevProxyPath;
   },
 ): Promise<Response> {
   const target = (options.target || resolveIdpProxyTarget()).replace(/\/$/, "");
@@ -258,6 +286,15 @@ export async function forwardIdpFetch(
   const headers = new Headers(request.headers);
   headers.delete("host");
   headers.delete("accept-encoding");
+  // Next.js sets X-Forwarded-Host to the SPA. Logto would then advertise
+  // authorization_endpoint on :18082, and social login dies on /direct/social/*.
+  if (url.pathname.includes("/.well-known/openid-configuration")) {
+    headers.delete("x-forwarded-host");
+    headers.delete("x-forwarded-proto");
+    headers.delete("x-forwarded-port");
+    headers.delete("x-forwarded-for");
+    headers.delete("forwarded");
+  }
   // Undici (Next.js) rejects Expect: 100-continue and other hop-by-hop headers.
   headers.delete("expect");
   headers.delete("connection");

@@ -11,8 +11,8 @@ CI **不使用** `NPM_TOKEN`。`LuminaryWorks/shared` 的 `master` / `main` 有�
 | 包 | 目录 | 当前版本 | 说明 |
 |----|------|----------|------|
 | `@luminaryworks/auth-core` | `packages/auth-core` | 0.2.2 | NestJS JWKS；`mode=legacy` 必须显式提供 `legacyJwtSecret` |
-| `@luminaryworks/auth-react` | `packages/auth-react` | 0.3.1 | Headless + OIDC PKCE（showSocialConnectors） |
-| `@luminaryworks/auth-dev-proxy` | `packages/auth-dev-proxy` | 0.1.0 | 同域 `/oidc` + Experience 代理 |
+| `@luminaryworks/auth-react` | `packages/auth-react` | 0.3.2 | Headless + OIDC PKCE（showSocialConnectors） |
+| `@luminaryworks/auth-dev-proxy` | `packages/auth-dev-proxy` | 0.1.1 | 同域 `/oidc` + Experience 代理 |
 | `@luminaryworks/pal` | `packages/pal` | 0.2.0 | 权限抽象层 |
 | `@luminaryworks/entitlement-client` | `packages/entitlement-client` | 0.1.0 | 权益客户端（生产请显式 `ENTITLEMENT_MODE=enforce`） |
 | `@luminaryworks/notification` | `packages/notification` | 0.1.0 | 通知（Email） |

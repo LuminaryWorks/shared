@@ -88,11 +88,6 @@ const defaults: Required<HeadlessLoginLabels> = {
   hidePassword: "Hide password",
 };
 
-const FALLBACK_SOCIAL: ExperienceSocialConnector[] = [
-  { id: "google", target: "google", name: "Google" },
-  { id: "github", target: "github", name: "GitHub" },
-];
-
 function resolveSieBase(config: Partial<LuminaryIdpConfig>): string | undefined {
   // Prefer same-origin Experience base (SPA proxies /api/.well-known) to avoid
   // cross-port CORS on local Logto. Fall back to issuer origin only when needed.
@@ -183,32 +178,18 @@ export function HeadlessLoginPanel({
     };
 
     if (!sieBase) {
-      apply(
-        allowlist
-          ? FALLBACK_SOCIAL.filter((c) => allowlist.has(c.target))
-          : FALLBACK_SOCIAL,
-      );
+      // No Experience base — do not invent Google/GitHub buttons. Fake fallbacks
+      // start OIDC `direct_sign_in` and dump users on Logto `/sign-in`.
+      if (!cancelled) setConnectors([]);
       return;
     }
 
     void fetchSocialConnectors({ apiBase: sieBase, appId: config.clientId })
       .then((list) => {
-        if (list.length) {
-          apply(list);
-          return;
-        }
-        apply(
-          allowlist
-            ? FALLBACK_SOCIAL.filter((c) => allowlist.has(c.target))
-            : FALLBACK_SOCIAL,
-        );
+        apply(list);
       })
       .catch(() => {
-        apply(
-          allowlist
-            ? FALLBACK_SOCIAL.filter((c) => allowlist.has(c.target))
-            : FALLBACK_SOCIAL,
-        );
+        if (!cancelled) setConnectors([]);
       });
 
     return () => {
