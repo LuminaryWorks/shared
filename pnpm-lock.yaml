@@ -12,6 +12,15 @@ importers:
         specifier: ^5.7.0
         version: 5.9.3
 
+  packages/ai-client:
+    devDependencies:
+      '@types/node':
+        specifier: ^24.0.0
+        version: 24.13.3
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+
   packages/auth-core:
     dependencies:
       jose:
