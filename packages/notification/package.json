@@ -1,6 +1,6 @@
 {
   "name": "@luminaryworks/notification",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "license": "Polyform-Noncommercial-1.0.0",
   "description": "LuminaryWorks platform NotificationModule — Email first (NestJS + @nestjs-modules/mailer)",
   "repository": {
