@@ -6,7 +6,17 @@ export interface IdpDevProxyOptions {
   spaOrigin: string;
   /** Upstream IdP origin (Logto or Auth Gateway), default http://localhost:3001 */
   target?: string;
+  /** Canonical provider origin used by issuer and other preserved discovery fields. */
+  upstreamOrigin?: string;
+  /** Additional origins whose endpoint URLs should be routed through the SPA. */
+  rewriteOrigins?: readonly string[];
+  /** Discovery fields that must remain provider-owned. Defaults to Logto-compatible fields. */
+  preserveUpstreamDiscoveryFields?: readonly string[];
+  /** Same-origin paths mounted by createIdpDevProxyMap. Defaults to Logto-compatible paths. */
+  providerPaths?: readonly string[];
+  /** @deprecated Use upstreamOrigin. */
   logtoOrigin?: string;
+  /** @deprecated Included as a rewrite source for existing gateway setups. */
   gatewayOrigin?: string;
 }
 
@@ -45,6 +55,15 @@ export interface HttpProxyLikeConfig {
 
 const DEFAULT_LOGTO = "http://localhost:3001";
 const DEFAULT_GATEWAY = "http://localhost:3010";
+export const DEFAULT_LOGTO_PROVIDER_PATHS = [
+  "/oidc",
+  "/api/experience",
+  "/api/.well-known",
+  "/sign-in",
+  "/consent",
+  "/direct",
+  "/callback",
+] as const;
 
 /**
  * Keep authorize/issuer on Logto in discovery so JWT `iss` and hosted UI stay correct.
@@ -56,12 +75,12 @@ const DEFAULT_GATEWAY = "http://localhost:3010";
  * `X-Forwarded-Host: <spa>` — Logto then *emits* SPA authorize URLs. Skipping a
  * rewrite is not enough; pin these fields back onto the IdP origin.
  */
-const KEEP_ON_IDP = new Set([
+const DEFAULT_KEEP_ON_UPSTREAM = [
   "issuer",
   "authorization_endpoint",
   "device_authorization_endpoint",
   "pushed_authorization_request_endpoint",
-]);
+] as const;
 
 /** Resolve upstream from env; prefer explicit proxy target, then gateway, then Logto. */
 export function resolveIdpProxyTarget(env: Record<string, string | undefined> = process.env): string {
@@ -92,6 +111,39 @@ function decompressIfNeeded(buf: Buffer, encoding: string | undefined): Buffer {
   return buf;
 }
 
+function trimTrailingSlash(value: string): string {
+  return value.replace(/\/$/, "");
+}
+
+function providerOrigin(options: IdpDevProxyOptions): string {
+  return trimTrailingSlash(options.upstreamOrigin || options.logtoOrigin || DEFAULT_LOGTO);
+}
+
+function rewriteSources(options: IdpDevProxyOptions): string[] {
+  const upstreamOrigin = providerOrigin(options);
+  const target = trimTrailingSlash(options.target || upstreamOrigin);
+  const gatewayOrigin = trimTrailingSlash(options.gatewayOrigin || DEFAULT_GATEWAY);
+  return [
+    ...new Set([
+      ...(options.rewriteOrigins || []).map(trimTrailingSlash),
+      target,
+      upstreamOrigin,
+      gatewayOrigin,
+      "http://127.0.0.1:3001",
+      "http://127.0.0.1:3010",
+    ]),
+  ].sort((a, b) => b.length - a.length);
+}
+
+function rewriteUrlOrigin(url: string, origins: readonly string[], destination: string): string {
+  for (const origin of origins) {
+    if (url === origin || url.startsWith(`${origin}/`)) {
+      return `${destination}${url.slice(origin.length)}`;
+    }
+  }
+  return url;
+}
+
 function pinToOrigin(url: string, origin: string): string {
   try {
     const parsed = new URL(url);
@@ -105,33 +157,28 @@ function pinToOrigin(url: string, origin: string): string {
 }
 
 /**
- * Keep authorize/issuer on Logto; rewrite token/jwks/userinfo to SPA origin.
- * KEEP_ON_IDP fields are forced onto Logto even when upstream already used the SPA host.
+ * Keep configured provider-owned fields upstream and route other reachable endpoints
+ * through the SPA. Logto-compatible defaults also pin hosted authorization upstream.
  */
 export function rewriteOidcDiscoveryJson(text: string, options: IdpDevProxyOptions): string {
-  const spaOrigin = options.spaOrigin.replace(/\/$/, "");
-  const logtoOrigin = (options.logtoOrigin || DEFAULT_LOGTO).replace(/\/$/, "");
-  const gatewayOrigin = (options.gatewayOrigin || DEFAULT_GATEWAY).replace(/\/$/, "");
+  const spaOrigin = trimTrailingSlash(options.spaOrigin);
+  const upstreamOrigin = providerOrigin(options);
+  const origins = rewriteSources(options);
+  const preservedFields = new Set(
+    options.preserveUpstreamDiscoveryFields || DEFAULT_KEEP_ON_UPSTREAM,
+  );
   try {
     const data = JSON.parse(text) as Record<string, unknown>;
     for (const [key, value] of Object.entries(data)) {
       if (typeof value !== "string") continue;
-      if (KEEP_ON_IDP.has(key)) {
+      if (preservedFields.has(key)) {
         data[key] = pinToOrigin(
-          value
-            .replaceAll(spaOrigin, logtoOrigin)
-            .replaceAll(gatewayOrigin, logtoOrigin)
-            .replaceAll("http://127.0.0.1:3001", logtoOrigin)
-            .replaceAll("http://127.0.0.1:3010", logtoOrigin),
-          logtoOrigin,
+          rewriteUrlOrigin(value, [spaOrigin, ...origins], upstreamOrigin),
+          upstreamOrigin,
         );
         continue;
       }
-      data[key] = value
-        .replaceAll(gatewayOrigin, spaOrigin)
-        .replaceAll(logtoOrigin, spaOrigin)
-        .replaceAll("http://127.0.0.1:3001", spaOrigin)
-        .replaceAll("http://127.0.0.1:3010", spaOrigin);
+      data[key] = rewriteUrlOrigin(value, origins, spaOrigin);
     }
     return JSON.stringify(data);
   } catch {
@@ -141,19 +188,13 @@ export function rewriteOidcDiscoveryJson(text: string, options: IdpDevProxyOptio
 
 /** Keep OIDC / Experience / consent hops on the SPA origin so cookies stay aligned. */
 export function rewriteIdpLocation(location: string, options: IdpDevProxyOptions): string {
-  const spaOrigin = options.spaOrigin.replace(/\/$/, "");
-  const logtoOrigin = (options.logtoOrigin || DEFAULT_LOGTO).replace(/\/$/, "");
-  const gatewayOrigin = (options.gatewayOrigin || DEFAULT_GATEWAY).replace(/\/$/, "");
-  const target = (options.target || logtoOrigin).replace(/\/$/, "");
-  return location
-    .replaceAll(gatewayOrigin, spaOrigin)
-    .replaceAll(logtoOrigin, spaOrigin)
-    .replaceAll(target, spaOrigin)
-    .replaceAll("http://127.0.0.1:3001", spaOrigin)
-    .replaceAll("http://127.0.0.1:3010", spaOrigin);
+  const spaOrigin = trimTrailingSlash(options.spaOrigin);
+  return rewriteUrlOrigin(location, rewriteSources(options), spaOrigin);
 }
 
-function stripCookieDomain(setCookies: string | string[] | undefined): string[] | undefined {
+export function rewriteIdpSetCookie(
+  setCookies: string | string[] | undefined,
+): string[] | undefined {
   if (!setCookies) return undefined;
   const list = Array.isArray(setCookies) ? setCookies : [setCookies];
   return list.map((c) =>
@@ -197,7 +238,7 @@ function applyRewrittenProxyBody(
     if (value !== undefined) res.setHeader(key, value);
   }
 
-  const cookies = stripCookieDomain(proxyRes.headers["set-cookie"]);
+  const cookies = rewriteIdpSetCookie(proxyRes.headers["set-cookie"]);
   if (cookies) res.setHeader("set-cookie", cookies);
 
   res.setHeader("content-length", String(buf.length));
@@ -238,14 +279,7 @@ export function createIdpHttpProxy(options: IdpDevProxyOptions): HttpProxyLikeCo
   };
 }
 
-export type IdpDevProxyPath =
-  | "/oidc"
-  | "/api/experience"
-  | "/api/.well-known"
-  | "/sign-in"
-  | "/consent"
-  | "/direct"
-  | "/callback";
+export type IdpDevProxyPath = (typeof DEFAULT_LOGTO_PROVIDER_PATHS)[number];
 
 /**
  * Map suitable for Rsbuild/Vite `server.proxy`.
@@ -254,18 +288,10 @@ export type IdpDevProxyPath =
  */
 export function createIdpDevProxyMap(
   options: IdpDevProxyOptions,
-): Record<IdpDevProxyPath, HttpProxyLikeConfig> {
+): Record<string, HttpProxyLikeConfig> {
   const proxy = createIdpHttpProxy(options);
-  return {
-    "/oidc": proxy,
-    "/api/experience": proxy,
-    "/api/.well-known": proxy,
-    "/sign-in": proxy,
-    "/consent": proxy,
-    "/direct": proxy,
-    // Social connector return URLs registered on Logto (`/callback/:connectorId`)
-    "/callback": proxy,
-  };
+  const paths = options.providerPaths || DEFAULT_LOGTO_PROVIDER_PATHS;
+  return Object.fromEntries(paths.map((path) => [path, proxy]));
 }
 
 /**
@@ -276,7 +302,7 @@ export function createIdpDevProxyMap(
 export async function forwardIdpFetch(
   request: Request,
   options: IdpDevProxyOptions & {
-    mountPath?: IdpDevProxyPath;
+    mountPath?: string;
   },
 ): Promise<Response> {
   const target = (options.target || resolveIdpProxyTarget()).replace(/\/$/, "");
@@ -350,7 +376,7 @@ export async function forwardIdpFetch(
   });
 
   const setCookie = upstreamRes.headers.getSetCookie?.() ?? [];
-  for (const c of stripCookieDomain(setCookie) ?? []) {
+  for (const c of rewriteIdpSetCookie(setCookie) ?? []) {
     outHeaders.append("set-cookie", c);
   }
 

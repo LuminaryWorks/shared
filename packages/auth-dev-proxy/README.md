@@ -5,12 +5,34 @@ Same-origin IdP proxy for LuminaryWorks product SPAs.
 Browser calls `http://localhost:<spa>/oidc` and `/api/experience` so Headless login
 does **not** require Auth Gateway (`:3010`) during local development.
 
-## Rules
+## Transport rules
 
 - Upstream defaults to Logto `http://localhost:3001` (`AUTH_IDP_PROXY_TARGET` / gateway override).
-- Discovery JSON: keep `issuer` + `authorization_endpoint` on Logto (force them back if Logto emitted the SPA host via `X-Forwarded-Host`); rewrite token/jwks/userinfo to the SPA origin.
+- Discovery always keeps provider-owned fields upstream. The Logto-compatible
+  default preserves `issuer`, `authorization_endpoint`,
+  `device_authorization_endpoint`, and
+  `pushed_authorization_request_endpoint`; token/JWKS/userinfo endpoints are
+  rewritten to the SPA origin.
 - Rewrites `Location` / strips cookie `Domain` so Experience + consent hops stay on the SPA origin.
 - Proxy config emits both hpm v2 (`onProxyRes`) and v3+/v4 (`on.proxyRes`) hooks for Vite and Rsbuild 2.
+
+For another OIDC provider, set `upstreamOrigin` and optionally configure:
+
+```ts
+createIdpDevProxyMap({
+  spaOrigin,
+  target: "https://id.example.com",
+  upstreamOrigin: "https://id.example.com",
+  // JWT issuer remains provider-owned; these endpoints are reachable via the SPA.
+  preserveUpstreamDiscoveryFields: ["issuer"],
+  providerPaths: ["/oauth2", "/login", "/callback"],
+  rewriteOrigins: ["https://id-alt.example.com"],
+});
+```
+
+`logtoOrigin` remains as a deprecated alias for `upstreamOrigin`, and the
+default provider paths remain `/oidc`, `/api/experience`, `/api/.well-known`,
+`/sign-in`, `/consent`, `/direct`, and `/callback`.
 
 ## Rsbuild / Vite
 

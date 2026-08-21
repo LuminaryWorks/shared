@@ -4,6 +4,7 @@ import {
   WebStorageStateStore,
   type User,
 } from "oidc-client-ts";
+import { createLogtoDirectSignInRequest } from "./logto-experience-adapter";
 import type { LuminaryAuthSession, LuminaryIdpConfig } from "./types";
 
 let manager: UserManager | null = null;
@@ -75,9 +76,12 @@ export function resetUserManager(): void {
 
 export interface SignInOptions {
   returnUrl?: string;
+  /** Provider-specific authorize parameters supplied by an experience adapter. */
+  extraQueryParams?: Record<string, string>;
   /**
    * Logto direct sign-in, e.g. `social:google` / `social:github` / `sso:<connectorId>`.
    * Skips the hosted password page and opens the provider immediately.
+   * @deprecated Prefer a LoginExperienceAdapter, which supplies extraQueryParams.
    */
   directSignIn?: string;
 }
@@ -86,9 +90,14 @@ function signInArgs(config: LuminaryIdpConfig, options?: SignInOptions | string)
   const normalized: SignInOptions =
     typeof options === "string" ? { returnUrl: options } : (options ?? {});
   const resource = config.audience?.trim();
-  const extraQueryParams: Record<string, string> = {};
+  const extraQueryParams: Record<string, string> = { ...normalized.extraQueryParams };
   if (resource) extraQueryParams.resource = resource;
-  if (normalized.directSignIn) extraQueryParams.direct_sign_in = normalized.directSignIn;
+  if (normalized.directSignIn) {
+    Object.assign(
+      extraQueryParams,
+      createLogtoDirectSignInRequest(normalized.directSignIn).extraQueryParams,
+    );
+  }
   return {
     state: normalized.returnUrl ? { returnUrl: normalized.returnUrl } : undefined,
     extraQueryParams: Object.keys(extraQueryParams).length ? extraQueryParams : undefined,

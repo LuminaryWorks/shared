@@ -1,5 +1,11 @@
 import { useEffect, useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
-import { experiencePasswordSignIn, fetchSocialConnectors, type ExperienceSocialConnector } from "./experience-client";
+import {
+  LOGIN_EXPERIENCE_CAPABILITIES,
+  resolveLoginExperienceAdapter,
+  type ExperienceSocialConnector,
+  type LoginExperienceAdapter,
+  type SocialSignInRequest,
+} from "./login-experience-adapter";
 import { signInPopup, signInRedirect } from "./oidc-client";
 import { isIdpConfigured, type LuminaryAuthSession, type LuminaryIdpConfig } from "./types";
 import styles from "./HeadlessLoginPanel.module.scss";
@@ -13,7 +19,7 @@ export interface HeadlessLoginLabels {
   identifierPlaceholder?: string;
   passwordPlaceholder?: string;
   submitPassword?: string;
-  /** @deprecated Use social buttons; kept for backward-compatible label overrides. */
+  /** Hosted OIDC button shown when the adapter has no password capability. */
   submitSso?: string;
   submitGoogle?: string;
   submitGithub?: string;
@@ -27,6 +33,8 @@ export interface HeadlessLoginLabels {
 
 export interface HeadlessLoginPanelProps {
   config: Partial<LuminaryIdpConfig>;
+  /** Login-experience provider. Defaults to the built-in Logto adapter. */
+  experienceAdapter?: LoginExperienceAdapter;
   /** Product display name shown as brand signal */
   productName: string;
   logoSrc?: string;
@@ -115,6 +123,7 @@ function cx(...parts: Array<string | undefined | false>): string {
 
 export function HeadlessLoginPanel({
   config,
+  experienceAdapter: experienceAdapterProp,
   productName,
   logoSrc,
   labels: labelsProp,
@@ -131,6 +140,7 @@ export function HeadlessLoginPanel({
   style,
   themeColor = DEFAULT_LOGIN_THEME_COLOR,
 }: HeadlessLoginPanelProps) {
+  const experienceAdapter = resolveLoginExperienceAdapter(experienceAdapterProp);
   const labels = { ...defaults, ...labelsProp };
   const configured = isIdpConfigured(config);
   const [identifier, setIdentifier] = useState("");
@@ -145,7 +155,14 @@ export function HeadlessLoginPanel({
   const [connectors, setConnectors] = useState<ExperienceSocialConnector[]>([]);
   const socialEnabled =
     showSocialConnectors !== false &&
-    !(Array.isArray(socialProviders) && socialProviders.length === 0);
+    !(Array.isArray(socialProviders) && socialProviders.length === 0) &&
+    experienceAdapter.capabilities.includes(LOGIN_EXPERIENCE_CAPABILITIES.socialConnectors) &&
+    experienceAdapter.capabilities.includes(LOGIN_EXPERIENCE_CAPABILITIES.socialDirectSignIn) &&
+    typeof experienceAdapter.fetchSocialConnectors === "function" &&
+    typeof experienceAdapter.createSocialSignInRequest === "function";
+  const passwordEnabled =
+    experienceAdapter.capabilities.includes(LOGIN_EXPERIENCE_CAPABILITIES.passwordSignIn) &&
+    typeof experienceAdapter.experiencePasswordSignIn === "function";
 
   // Browser back from IdP restores bfcache with loading still set → "…".
   useEffect(() => {
@@ -159,7 +176,8 @@ export function HeadlessLoginPanel({
   }, []);
 
   useEffect(() => {
-    if (!socialEnabled) {
+    const fetchConnectors = experienceAdapter.fetchSocialConnectors;
+    if (!socialEnabled || !fetchConnectors) {
       setConnectors([]);
       return;
     }
@@ -184,7 +202,7 @@ export function HeadlessLoginPanel({
       return;
     }
 
-    void fetchSocialConnectors({ apiBase: sieBase, appId: config.clientId })
+    void fetchConnectors.call(experienceAdapter, { apiBase: sieBase, appId: config.clientId })
       .then((list) => {
         apply(list);
       })
@@ -195,15 +213,25 @@ export function HeadlessLoginPanel({
     return () => {
       cancelled = true;
     };
-  }, [config.clientId, config.experienceApiBase, config.issuer, socialEnabled, socialProviders]);
+  }, [
+    config.clientId,
+    config.experienceApiBase,
+    config.issuer,
+    experienceAdapter,
+    socialEnabled,
+    socialProviders,
+  ]);
 
-  const runOidc = async (directSignIn?: string) => {
+  const runOidc = async (experienceRequest?: SocialSignInRequest) => {
     if (!configured) throw new Error("IdP not configured");
     if (mode === "redirect") {
-      await signInRedirect(config, { returnUrl, directSignIn });
+      await signInRedirect(config, { returnUrl, ...experienceRequest });
       return;
     }
-    const { session, returnUrl: next } = await signInPopup(config, { returnUrl, directSignIn });
+    const { session, returnUrl: next } = await signInPopup(config, {
+      returnUrl,
+      ...experienceRequest,
+    });
     await onOidcSession?.(session, next);
   };
 
@@ -211,7 +239,27 @@ export function HeadlessLoginPanel({
     setError("");
     setLoading(target);
     try {
-      await runOidc(`social:${target}`);
+      if (
+        !socialEnabled ||
+        !experienceAdapter.capabilities.includes(
+          LOGIN_EXPERIENCE_CAPABILITIES.socialDirectSignIn,
+        ) ||
+        !experienceAdapter.createSocialSignInRequest
+      ) {
+        throw new Error("Login experience does not support direct social sign-in");
+      }
+      await runOidc(experienceAdapter.createSocialSignInRequest(target));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+      setLoading(null);
+    }
+  };
+
+  const runHostedOidc = async () => {
+    setError("");
+    setLoading("sso");
+    try {
+      await runOidc();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
       setLoading(null);
@@ -236,7 +284,16 @@ export function HeadlessLoginPanel({
       if (!apiBase) {
         throw new Error(labels.experienceUnavailable);
       }
-      const result = await experiencePasswordSignIn({
+      if (
+        !passwordEnabled ||
+        !experienceAdapter.capabilities.includes(
+          LOGIN_EXPERIENCE_CAPABILITIES.passwordSignIn,
+        ) ||
+        !experienceAdapter.experiencePasswordSignIn
+      ) {
+        throw new Error(labels.experienceUnavailable);
+      }
+      const result = await experienceAdapter.experiencePasswordSignIn({
         apiBase,
         identifier: identifier.trim(),
         password,
@@ -277,43 +334,56 @@ export function HeadlessLoginPanel({
 
       {configured ? (
         <>
-          <form onSubmit={(e) => void runPassword(e)} className={styles.form}>
-            <input
-              type="text"
-              name="identifier"
-              autoComplete="username"
-              placeholder={labels.identifierPlaceholder}
-              value={identifier}
-              onChange={(e) => setIdentifier(e.target.value)}
-              className={styles.input}
-              disabled={busy}
-            />
-            <div className={styles.passwordField}>
+          {passwordEnabled ? (
+            <form onSubmit={(e) => void runPassword(e)} className={styles.form}>
               <input
-                type={passwordVisible ? "text" : "password"}
-                name="password"
-                autoComplete="current-password"
-                placeholder={labels.passwordPlaceholder}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className={cx(styles.input, styles.passwordInput)}
+                type="text"
+                name="identifier"
+                autoComplete="username"
+                placeholder={labels.identifierPlaceholder}
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
+                className={styles.input}
                 disabled={busy}
               />
+              <div className={styles.passwordField}>
+                <input
+                  type={passwordVisible ? "text" : "password"}
+                  name="password"
+                  autoComplete="current-password"
+                  placeholder={labels.passwordPlaceholder}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className={cx(styles.input, styles.passwordInput)}
+                  disabled={busy}
+                />
+                <button
+                  type="button"
+                  className={styles.passwordToggle}
+                  disabled={busy}
+                  aria-label={passwordVisible ? labels.hidePassword : labels.showPassword}
+                  aria-pressed={passwordVisible}
+                  onClick={() => setPasswordVisible((v) => !v)}
+                >
+                  <PasswordVisibilityIcon visible={passwordVisible} />
+                </button>
+              </div>
+              <button type="submit" className={styles.primaryBtn} disabled={busy || !identifier || !password}>
+                {loading === "password" ? "…" : labels.submitPassword}
+              </button>
+            </form>
+          ) : (
+            <div className={styles.form}>
               <button
                 type="button"
-                className={styles.passwordToggle}
+                className={styles.primaryBtn}
                 disabled={busy}
-                aria-label={passwordVisible ? labels.hidePassword : labels.showPassword}
-                aria-pressed={passwordVisible}
-                onClick={() => setPasswordVisible((v) => !v)}
+                onClick={() => void runHostedOidc()}
               >
-                <PasswordVisibilityIcon visible={passwordVisible} />
+                {loading === "sso" ? "…" : labels.submitSso}
               </button>
             </div>
-            <button type="submit" className={styles.primaryBtn} disabled={busy || !identifier || !password}>
-              {loading === "password" ? "…" : labels.submitPassword}
-            </button>
-          </form>
+          )}
           {showHint ? <p className={styles.hint}>{labels.hint}</p> : null}
 
           {showSocial ? (

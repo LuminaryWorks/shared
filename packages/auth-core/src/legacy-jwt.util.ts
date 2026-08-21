@@ -4,8 +4,16 @@ import type { LuminaryJwtPayload } from "./types";
 interface LegacyPayload {
   sub: string;
   name?: string;
+  email?: string;
   roles?: string[];
+  permissions?: string[];
+  orgId?: string;
+  organizationId?: string;
+  appAccess?: string[];
+  iss?: string;
+  aud?: string | string[];
   exp?: number;
+  iat?: number;
 }
 
 function base64UrlDecode(input: string): Buffer {
@@ -39,6 +47,15 @@ export function verifyLegacyJwt(token: string, secret: string): LuminaryJwtPaylo
   return {
     sub: payload.sub,
     name: payload.name,
+    email: payload.email,
     roles: payload.roles,
+    permissions: payload.permissions,
+    orgId: payload.orgId ?? payload.organizationId,
+    organizationId: payload.organizationId ?? payload.orgId,
+    appAccess: payload.appAccess,
+    iss: payload.iss,
+    aud: payload.aud,
+    exp: payload.exp,
+    iat: payload.iat,
   };
 }

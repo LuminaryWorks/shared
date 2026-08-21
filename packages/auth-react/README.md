@@ -24,7 +24,7 @@ On first 401: try refresh → else open reauth UI (overlay + OIDC **popup**, not
 
 ## Headless login panel
 
-Branded panel with **social buttons** (auto-loaded from IdP Experience `socialConnectors` — google / github / x / …) plus **unified account** password. Social uses `direct_sign_in=social:<target>`. Buttons are hidden when the IdP has no social connectors (do not invent Google/GitHub — that dumped users on Logto `/sign-in`).
+Branded panel with **social buttons** (auto-loaded from IdP Experience `socialConnectors` — google / github / x / …) plus **unified account** password. The default `LogtoExperienceAdapter` keeps Logto's `direct_sign_in=social:<target>` parameter inside provider-specific code. Buttons are hidden when the IdP has no social connectors (do not invent Google/GitHub — that dumped users on Logto `/sign-in`).
 
 Styles ship as **CSS Modules (SCSS)**. The built bundle auto-injects panel CSS in the browser. Optional explicit import (SSR / style control):
 
@@ -56,8 +56,41 @@ Override layout via `className` / `style` on the root.
 |------|---------|--------|
 | `showSocialConnectors` | `true` | `false` skips fetch and hides divider + social buttons |
 | `socialProviders` | `"auto"` | allowlist, or `[]` (same effect as `showSocialConnectors={false}`) |
+| `experienceAdapter` | `LogtoExperienceAdapter` | optional custom `LoginExperienceAdapter` |
 
 IdP hosted `/sign-in` social row layout: `node scripts/apply-branding.mjs` (customCss wrap). Enable connectors: `ensure-sign-in-experience.mjs` + `verify-social-direct-signin.mjs`.
+
+### Login experience adapters
+
+`HeadlessLoginPanel` delegates non-standard password and social-connector flows
+to `LoginExperienceAdapter`; standard OIDC authorization code + PKCE remains in
+the OIDC client. Adapter methods are optional and are used only when both the
+matching capability and method are present. Without password support, the panel
+renders `labels.submitSso` and starts a standard hosted OIDC flow. Logto is the
+only built-in provider:
+
+```ts
+import {
+  createLoginExperienceAdapter,
+  LogtoExperienceAdapter,
+  resolveLoginExperienceAdapter,
+  type LoginExperienceAdapter,
+  type LoginExperienceCapability,
+} from "@luminaryworks/auth-react";
+
+const logto = new LogtoExperienceAdapter();
+const sameDefault = createLoginExperienceAdapter("logto");
+const resolved = resolveLoginExperienceAdapter(logto);
+
+// Hosted-only enterprise IdP: no Experience API methods are required.
+const hostedOnly = {
+  provider: "enterprise",
+  capabilities: [],
+} satisfies LoginExperienceAdapter;
+```
+
+Existing `experiencePasswordSignIn` and `fetchSocialConnectors` imports remain
+available as compatibility functions backed by the default Logto adapter.
 
 ## Popup callback
 

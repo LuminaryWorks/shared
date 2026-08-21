@@ -1,33 +1,44 @@
 import { createRemoteJWKSet, jwtVerify, type JWTPayload } from "jose";
-import type { LuminaryAuthModuleOptions, LuminaryJwtPayload, OidcDiscoveryDocument } from "./types";
+import {
+  DefaultRuntimeClaimsResolver,
+  DEFAULT_OIDC_CLAIMS_PRESET,
+  withClaimsMapping,
+} from "./runtime/claims";
+import type {
+  ClaimsMapping,
+  ClaimsPreset,
+  LuminaryPrincipal,
+  OidcDiscoveryDocument,
+  RuntimeClaimsResolver,
+  RuntimeIdentityProviderKind,
+} from "./types";
 
-function readClaim(payload: JWTPayload, path: string): unknown {
-  if (path in payload) return payload[path];
-  const parts = path.split(".");
-  let current: unknown = payload;
-  for (const part of parts) {
-    if (typeof current !== "object" || current === null || !(part in current)) {
-      return undefined;
-    }
-    current = (current as Record<string, unknown>)[part];
-  }
-  return current;
-}
-
-function toStringArray(value: unknown): string[] | undefined {
-  if (!value) return undefined;
-  if (Array.isArray(value)) return value.map(String);
-  if (typeof value === "string") return value.split(/[\s,]+/).filter(Boolean);
-  return undefined;
+export interface OidcJwtVerifierOptions {
+  issuer: string;
+  audience?: string | string[];
+  jwksUri?: string;
+  claimsMapping?: ClaimsMapping;
+  claimsPreset?: ClaimsPreset;
+  claimsResolver?: RuntimeClaimsResolver;
+  providerKind?: RuntimeIdentityProviderKind;
 }
 
 export class OidcJwtVerifier {
   private jwks?: ReturnType<typeof createRemoteJWKSet>;
   private discovery?: OidcDiscoveryDocument;
   private readonly issuer: string;
+  private readonly preset: ClaimsPreset;
+  private readonly resolver: RuntimeClaimsResolver;
+  private readonly providerKind: RuntimeIdentityProviderKind;
 
-  constructor(private readonly options: Required<Pick<LuminaryAuthModuleOptions, "issuer">> & LuminaryAuthModuleOptions) {
+  constructor(private readonly options: OidcJwtVerifierOptions) {
     this.issuer = options.issuer.replace(/\/$/, "");
+    this.preset = withClaimsMapping(
+      options.claimsPreset ?? DEFAULT_OIDC_CLAIMS_PRESET,
+      options.claimsMapping,
+    );
+    this.resolver = options.claimsResolver ?? new DefaultRuntimeClaimsResolver();
+    this.providerKind = options.providerKind ?? "oidc";
   }
 
   private async ensureJwks(): Promise<ReturnType<typeof createRemoteJWKSet>> {
@@ -54,21 +65,13 @@ export class OidcJwtVerifier {
     return this.discovery;
   }
 
-  async verify(token: string): Promise<LuminaryJwtPayload> {
+  async verify(token: string): Promise<LuminaryPrincipal> {
     const jwks = await this.ensureJwks();
-    const mapping = {
-      roles: this.options.claimsMapping?.roles ?? "roles",
-      permissions: this.options.claimsMapping?.permissions ?? "permissions",
-      orgId: this.options.claimsMapping?.orgId ?? "org_id",
-      name: this.options.claimsMapping?.name ?? "name",
-      email: this.options.claimsMapping?.email ?? "email",
-    };
 
     const verifyOptions: Parameters<typeof jwtVerify>[2] = {
       issuer: this.discovery?.issuer ?? this.issuer,
-      // Logto API resource access tokens use typ "at+jwt" (RFC 9068)
-      typ: "at+jwt",
     };
+    if (this.preset.jwtType) verifyOptions.typ = this.preset.jwtType;
     if (this.options.audience) {
       verifyOptions.audience = this.options.audience;
     }
@@ -77,7 +80,10 @@ export class OidcJwtVerifier {
     try {
       ({ payload } = await jwtVerify(token, jwks, verifyOptions));
     } catch (first) {
-      // Some IdPs omit typ or use "JWT"; retry without typ constraint.
+      if (!this.preset.jwtType || !this.preset.allowMissingOrDifferentJwtType) {
+        throw first;
+      }
+      // Provider preset explicitly permits the historical typ fallback.
       try {
         const opts = { ...verifyOptions };
         delete opts.typ;
@@ -87,20 +93,10 @@ export class OidcJwtVerifier {
       }
     }
 
-    const sub = String(payload.sub ?? "");
-    if (!sub) throw new Error("JWT missing sub");
-
-    return {
-      sub,
-      name: readClaim(payload, mapping.name) as string | undefined,
-      email: readClaim(payload, mapping.email) as string | undefined,
-      roles: toStringArray(readClaim(payload, mapping.roles)),
-      permissions: toStringArray(readClaim(payload, mapping.permissions)),
-      orgId: readClaim(payload, mapping.orgId) as string | undefined,
-      iss: payload.iss,
-      aud: payload.aud,
-      exp: payload.exp,
-      iat: payload.iat,
-    };
+    return this.resolver.resolve(payload as JWTPayload, {
+      providerKind: this.providerKind,
+      issuer: this.discovery?.issuer ?? this.issuer,
+      preset: this.preset,
+    });
   }
 }

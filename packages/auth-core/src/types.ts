@@ -1,5 +1,14 @@
 export type IdentityMode = "logto" | "external_oidc" | "legacy";
 
+export interface ClaimsMapping {
+  roles?: string;
+  permissions?: string;
+  orgId?: string;
+  appAccess?: string;
+  name?: string;
+  email?: string;
+}
+
 export interface LuminaryAuthModuleOptions {
   /** logto | external_oidc | legacy (HS256 dev) */
   mode?: IdentityMode;
@@ -11,14 +20,16 @@ export interface LuminaryAuthModuleOptions {
   jwksUri?: string;
   /** Required HS256 secret when mode=legacy. There is no built-in default. */
   legacyJwtSecret?: string;
+  /** Namespace for legacy subjects; defaults to urn:luminaryworks:legacy. */
+  legacyIssuer?: string;
   /** JWT claim paths for PAL / guards */
-  claimsMapping?: {
-    roles?: string;
-    permissions?: string;
-    orgId?: string;
-    name?: string;
-    email?: string;
-  };
+  claimsMapping?: ClaimsMapping;
+  /**
+   * Override the built-in runtime selected by mode. This is the extension
+   * point for another identity provider; auth-core does not ship empty
+   * provider-specific adapters.
+   */
+  runtimeProvider?: RuntimeIdentityProvider;
 }
 
 export interface LuminaryJwtPayload {
@@ -28,15 +39,63 @@ export interface LuminaryJwtPayload {
   roles?: string[];
   permissions?: string[];
   orgId?: string;
+  organizationId?: string;
+  appAccess?: string[];
   iss?: string;
   aud?: string | string[];
   exp?: number;
   iat?: number;
 }
 
-export interface LuminaryAuthenticatedUser extends LuminaryJwtPayload {
+export interface LuminaryAuthenticatedUser extends LuminaryPrincipal {
   /** Raw JWT for PAL oidc-claims adapter */
   rawToken?: string;
+}
+
+export type RuntimeIdentityProviderKind = "logto" | "oidc" | "legacy" | (string & {});
+
+export interface ExternalIdentityKey {
+  issuer: string;
+  subject: string;
+}
+
+export interface LuminaryPrincipal extends LuminaryJwtPayload {
+  /** Canonical OIDC subject. The legacy sub field is retained for compatibility. */
+  subject: string;
+  /** Canonical OIDC issuer. The legacy iss field is retained for compatibility. */
+  issuer: string;
+  /** Canonical organization identifier. The legacy orgId field is retained. */
+  organizationId?: string;
+  /** Product-entry grants carried by the identity token, not commercial entitlements. */
+  appAccess?: string[];
+  providerKind: RuntimeIdentityProviderKind;
+  externalIdentityKey: ExternalIdentityKey;
+}
+
+export interface RuntimeIdentityProvider {
+  readonly kind: RuntimeIdentityProviderKind;
+  verifyToken(token: string): Promise<LuminaryPrincipal>;
+}
+
+export type RuntimeClaims = Readonly<Record<string, unknown>>;
+
+export interface ClaimsPreset {
+  readonly name: string;
+  readonly mapping: Readonly<Required<ClaimsMapping>>;
+  /** JOSE protected-header typ required by this provider, when applicable. */
+  readonly jwtType?: string;
+  /** Compatibility fallback for providers that historically omitted typ. */
+  readonly allowMissingOrDifferentJwtType?: boolean;
+}
+
+export interface ClaimsResolutionContext {
+  providerKind: RuntimeIdentityProviderKind;
+  issuer: string;
+  preset: ClaimsPreset;
+}
+
+export interface RuntimeClaimsResolver {
+  resolve(claims: RuntimeClaims, context: ClaimsResolutionContext): LuminaryPrincipal;
 }
 
 export const LUMINARY_AUTH_OPTIONS = "LUMINARY_AUTH_OPTIONS";
