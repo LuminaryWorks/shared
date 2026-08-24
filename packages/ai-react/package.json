@@ -1,0 +1,54 @@
+{
+  "name": "@luminaryworks/ai-react",
+  "version": "0.1.0",
+  "license": "Polyform-Noncommercial-1.0.0",
+  "description": "LuminaryWorks Ant Design form for BYOK AI provider connections",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/LuminaryWorks/shared.git",
+    "directory": "packages/ai-react"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org",
+    "access": "public"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "test": "pnpm run build && node --test test/*.test.mjs",
+    "prepublishOnly": "pnpm run build"
+  },
+  "peerDependencies": {
+    "@ant-design/icons": "^5.0.0 || ^6.0.0",
+    "@luminaryworks/ai-client": "^0.2.0",
+    "antd": "^5.0.0 || ^6.0.0",
+    "react": "^18.0.0 || ^19.0.0"
+  },
+  "devDependencies": {
+    "@ant-design/icons": "^6.3.2",
+    "@luminaryworks/ai-client": "file:../ai-client",
+    "@types/react": "^19.0.0",
+    "antd": "^6.6.1",
+    "react": "^19.2.8",
+    "tsup": "^8.5.0",
+    "typescript": "^5.7.0"
+  },
+  "engines": {
+    "node": ">=24.0.0"
+  }
+}

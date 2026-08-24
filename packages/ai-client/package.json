@@ -1,15 +1,15 @@
 {
   "name": "@luminaryworks/ai-client",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "license": "Polyform-Noncommercial-1.0.0",
-  "description": "LuminaryWorks AI Platform client — complete, stream, embed, local BYOK adapter",
+  "description": "LuminaryWorks AI Platform client — catalog, list-models, complete, stream, embed, local BYOK adapter",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": ["dist/**/*.js", "dist/**/*.d.ts", "README.md"],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "check": "tsc -p tsconfig.json --noEmit",
-    "test": "node --test dist/*.spec.js || true"
+    "test": "pnpm run build && node --test test/*.test.mjs"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
@@ -20,7 +20,14 @@
       "types": "./dist/index.d.ts",
       "require": "./dist/index.js",
       "default": "./dist/index.js"
-    }
+    },
+    "./catalog": {
+      "types": "./dist/catalog.d.ts",
+      "require": "./dist/catalog.js",
+      "import": "./dist/catalog.js",
+      "default": "./dist/catalog.js"
+    },
+    "./package.json": "./package.json"
   },
   "engines": {
     "node": ">=24.0.0"

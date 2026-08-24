@@ -10,12 +10,13 @@ CI **不使用** `NPM_TOKEN`。`LuminaryWorks/shared` 的 `master` / `main` 有�
 
 | 包 | 目录 | 当前版本 | 说明 |
 |----|------|----------|------|
-| `@luminaryworks/auth-core` | `packages/auth-core` | 0.2.2 | NestJS JWKS；`mode=legacy` 必须显式提供 `legacyJwtSecret` |
-| `@luminaryworks/auth-react` | `packages/auth-react` | 0.3.2 | Headless + OIDC PKCE（showSocialConnectors） |
-| `@luminaryworks/auth-dev-proxy` | `packages/auth-dev-proxy` | 0.1.1 | 同域 `/oidc` + Experience 代理 |
-| `@luminaryworks/pal` | `packages/pal` | 0.2.0 | 权限抽象层 |
-| `@luminaryworks/entitlement-client` | `packages/entitlement-client` | 0.1.0 | 权益客户端（生产请显式 `ENTITLEMENT_MODE=enforce`） |
-| `@luminaryworks/notification` | `packages/notification` | 0.1.0 | 通知（Email） |
+| `@luminaryworks/auth-core` | `packages/auth-core` | 0.2.3 | NestJS JWKS；`mode=legacy` 必须显式提供 `legacyJwtSecret` |
+| `@luminaryworks/auth-react` | `packages/auth-react` | 0.4.1 | Login Experience Adapter + OIDC PKCE（Headless / Hosted） |
+| `@luminaryworks/auth-dev-proxy` | `packages/auth-dev-proxy` | 0.2.1 | 同域 `/oidc` + Experience 代理 |
+| `@luminaryworks/pal` | `packages/pal` | 0.3.0 | 权限抽象层 |
+| `@luminaryworks/entitlement-client` | `packages/entitlement-client` | 0.2.0 | 权益客户端（生产请显式 `ENTITLEMENT_MODE=enforce`） |
+| `@luminaryworks/notification` | `packages/notification` | 0.2.0 | 通知（Email） |
+| `@luminaryworks/ai-client` | `packages/ai-client` | 0.1.1 | AI 网关客户端（BYOK / 中央 ai-platform） |
 
 `@luminary/tooling` 仅 workspace 内部使用，不发布。
 
@@ -76,8 +77,8 @@ engine-strict=true
 ```
 
 ```bash
-pnpm add @luminaryworks/auth-core@^0.2.2
-pnpm add @luminaryworks/auth-react@^0.3.1
+pnpm add @luminaryworks/auth-core@^0.2.3
+pnpm add @luminaryworks/auth-react@^0.4.1
 ```
 
 **本地改 shared 源码时**：可用 `pnpm.overrides` 临时回退 `file:`，见 [MIGRATION.md](./MIGRATION.md)。日常与测试环境一律用 npmjs 版本。

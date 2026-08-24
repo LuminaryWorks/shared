@@ -1,22 +1,11 @@
+import { authHeadersForProvider } from "./models";
 import type { AiCompleteMessage, AiCompleteResult, AiProviderType, AiUsage } from "./types";
-
-const DEFAULT_BASE: Record<string, string> = {
-  deepseek: "https://api.deepseek.com",
-  openai: "https://api.openai.com",
-  doubao: "https://ark.cn-beijing.volces.com/api/v3",
-  "openai-compatible": "",
-  anthropic: "https://api.anthropic.com",
-  gemini: "https://generativelanguage.googleapis.com",
-};
+import { defaultProviderBaseUrl, resolveChatCompletionsUrl } from "./urls";
 
 export function resolveChatUrl(providerType: string, baseUrl?: string): string {
-  const root = (baseUrl || DEFAULT_BASE[providerType] || "").replace(/\/$/, "");
-  if (providerType === "gemini") {
-    return `${root || DEFAULT_BASE.gemini}/v1beta/openai/chat/completions`;
-  }
-  if (!root) throw new Error("openai-compatible provider requires baseUrl");
-  if (root.endsWith("/chat/completions")) return root;
-  return `${root}/chat/completions`;
+  const url = resolveChatCompletionsUrl(providerType, baseUrl);
+  if (!url) throw new Error("openai-compatible provider requires baseUrl");
+  return url;
 }
 
 function extractText(body: {
@@ -46,10 +35,7 @@ export async function completeLocal(input: {
   const res = await fetch(url, {
     method: "POST",
     signal: input.signal,
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${input.secret}`,
-    },
+    headers: authHeadersForProvider(input.providerType, input.secret),
     body: JSON.stringify({
       model: input.model,
       messages: input.messages,
@@ -94,7 +80,7 @@ async function completeAnthropic(
   },
   traceId: string,
 ): Promise<AiCompleteResult> {
-  const root = (input.baseUrl || DEFAULT_BASE.anthropic).replace(/\/$/, "");
+  const root = (input.baseUrl || defaultProviderBaseUrl("anthropic")).replace(/\/$/, "");
   const system = input.messages.filter((m) => m.role === "system").map((m) => m.content).join("\n");
   const messages = input.messages
     .filter((m) => m.role !== "system")
@@ -144,10 +130,7 @@ export async function* streamLocal(input: {
   const res = await fetch(url, {
     method: "POST",
     signal: input.signal,
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${input.secret}`,
-    },
+    headers: authHeadersForProvider(input.providerType, input.secret),
     body: JSON.stringify({
       model: input.model,
       messages: input.messages,
