@@ -27,7 +27,7 @@ importers:
         specifier: ^6.3.2
         version: 6.3.2(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@luminaryworks/ai-client':
-        specifier: file:../ai-client
+        specifier: workspace:*
         version: link:../ai-client
       '@types/react':
         specifier: ^19.0.0

@@ -3,13 +3,27 @@
   "version": "0.2.0",
   "license": "Polyform-Noncommercial-1.0.0",
   "description": "LuminaryWorks AI Platform client — catalog, list-models, complete, stream, embed, local BYOK adapter",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/LuminaryWorks/shared.git",
+    "directory": "packages/ai-client"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org",
+    "access": "public"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "files": ["dist/**/*.js", "dist/**/*.d.ts", "README.md"],
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "check": "tsc -p tsconfig.json --noEmit",
-    "test": "pnpm run build && node --test test/*.test.mjs"
+    "test": "pnpm run build && node --test test/*.test.mjs",
+    "prepublishOnly": "pnpm run build"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

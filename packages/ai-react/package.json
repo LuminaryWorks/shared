@@ -41,7 +41,7 @@
   },
   "devDependencies": {
     "@ant-design/icons": "^6.3.2",
-    "@luminaryworks/ai-client": "file:../ai-client",
+    "@luminaryworks/ai-client": "workspace:*",
     "@types/react": "^19.0.0",
     "antd": "^6.6.1",
     "react": "^19.2.8",

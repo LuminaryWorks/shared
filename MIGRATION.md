@@ -12,6 +12,8 @@
 | `@luminaryworks/pal` | 0.2.0 | npmjs（公开） |
 | `@luminaryworks/entitlement-client` | 0.1.0 | npmjs（公开） |
 | `@luminaryworks/notification` | 0.1.0 | npmjs（公开） |
+| `@luminaryworks/ai-client` | 0.2.0 | npmjs（公开） |
+| `@luminaryworks/ai-react` | 0.1.0 | npmjs（公开） |
 
 消费方 `package.json` 使用 `^x.y.z`，不再写死 `file:…/LuminaryWorks/shared/...`，也不再指向 GitHub Packages。
 

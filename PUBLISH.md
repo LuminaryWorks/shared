@@ -16,7 +16,8 @@ CI **不使用** `NPM_TOKEN`。`LuminaryWorks/shared` 的 `master` / `main` 有�
 | `@luminaryworks/pal` | `packages/pal` | 0.3.0 | 权限抽象层 |
 | `@luminaryworks/entitlement-client` | `packages/entitlement-client` | 0.2.0 | 权益客户端（生产请显式 `ENTITLEMENT_MODE=enforce`） |
 | `@luminaryworks/notification` | `packages/notification` | 0.2.0 | 通知（Email） |
-| `@luminaryworks/ai-client` | `packages/ai-client` | 0.1.1 | AI 网关客户端（BYOK / 中央 ai-platform） |
+| `@luminaryworks/ai-client` | `packages/ai-client` | 0.2.0 | AI 网关客户端（BYOK / 中央 ai-platform） |
+| `@luminaryworks/ai-react` | `packages/ai-react` | 0.1.0 | Ant Design BYOK AI 连接表单 |
 
 `@luminary/tooling` 仅 workspace 内部使用，不发布。
 
@@ -39,7 +40,7 @@ CI **不使用** `NPM_TOKEN`。`LuminaryWorks/shared` 的 `master` / `main` 有�
 | Environment | **留空**（workflow 未使用 GitHub Environment） |
 | Allowed actions | `npm publish` |
 
-包列表：`@luminaryworks/auth-core`、`auth-react`、`auth-dev-proxy`、`pal`、`entitlement-client`、`notification`。
+包列表：`@luminaryworks/ai-client`、`ai-react`、`auth-core`、`auth-react`、`auth-dev-proxy`、`pal`、`entitlement-client`、`notification`。
 
 文档：[Trusted publishing for npm packages](https://docs.npmjs.com/trusted-publishers/)
 
@@ -49,7 +50,7 @@ CI **不使用** `NPM_TOKEN`。`LuminaryWorks/shared` 的 `master` / `main` 有�
 npm trust github @luminaryworks/auth-core --repo LuminaryWorks/shared --file publish-packages.yml --allow-publish -y
 ```
 
-对其余五个包重复执行。
+对其余七个包重复执行。
 
 ### 不要做的事
 
