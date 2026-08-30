@@ -52,6 +52,17 @@ npm trust github @luminaryworks/auth-core --repo LuminaryWorks/shared --file pub
 
 对其余七个包重复执行。
 
+### 新包首次发布（ai-client / ai-react 等）
+
+在 npmjs 上为**新包名**绑定 Trusted Publisher（已有包可跳过）。本机需 `npm login` + 账号 2FA：
+
+```bash
+npm trust github @luminaryworks/ai-client --repo LuminaryWorks/shared --file publish-packages.yml --allow-publish -y
+npm trust github @luminaryworks/ai-react --repo LuminaryWorks/shared --file publish-packages.yml --allow-publish -y
+```
+
+或在 npmjs **Add package → pending publisher** 中填写与上表相同字段。完成后 push / 重跑 `publish-packages.yml`。
+
 ### 不要做的事
 
 - 不要在 GitHub Secrets 里放 `NPM_TOKEN`（本 workflow 会忽略它）。
