@@ -11,16 +11,32 @@ on:
   push:
     branches: [master, main]
   workflow_dispatch:
+    inputs:
+      bump:
+        description: Semver bump for packages that have unpublished changes
+        type: choice
+        options: [patch, minor, major]
+        default: patch
+      force_all:
+        description: Bump and publish every package (not only changed ones)
+        type: boolean
+        default: false
 
 permissions:
-  contents: read
+  contents: write
   id-token: write
+
+concurrency:
+  group: publish-packages
+  cancel-in-progress: false
 
 jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: pnpm/action-setup@v4
 
@@ -30,7 +46,11 @@ jobs:
           # Do not set registry-url / NODE_AUTH_TOKEN — that blocks OIDC.
 
       - name: Ensure npm CLI supports trusted publishing
-        run: npm install -g npm@latest
+        run: |
+          npm install -g npm@latest
+          echo "NPM_BIN=$(command -v npm)" >> "$GITHUB_ENV"
+          echo "npm=$(command -v npm)"
+          npm --version
 
       - name: Install and build
         run: |
@@ -38,4 +58,19 @@ jobs:
           pnpm build
 
       - name: Publish new versions to npmjs (OIDC)
+        env:
+          PUBLISH_BUMP: ${{ github.event.inputs.bump || 'patch' }}
+          PUBLISH_FORCE_ALL: ${{ github.event.inputs.force_all == 'true' && '1' || '0' }}
         run: node scripts/publish-if-new.mjs
+
+      - name: Commit version bumps
+        run: |
+          git add packages/*/package.json
+          if git diff --cached --quiet; then
+            echo "no version bumps to commit"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "chore: bump published @luminaryworks package versions [skip ci]"
+          git push
