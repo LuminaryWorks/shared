@@ -1,4 +1,5 @@
 export * from "./types";
+export * from "./iam-provider";
 export * from "./auth.service";
 export * from "./auth.module";
 export * from "./oidc-jwt.verifier";

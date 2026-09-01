@@ -23,6 +23,11 @@ export interface LuminaryIdpConfig {
    * When set, Headless password sign-in is attempted before OIDC popup fallback.
    */
   experienceApiBase?: string;
+  /**
+   * IAM catalog id: `logto` (default Headless), `oidc` / `zitadel` (Hosted Redirect).
+   * Ignored when `HeadlessLoginPanel` receives an explicit `experienceAdapter`.
+   */
+  iamProvider?: string;
 }
 
 export interface LuminaryAuthSession {
@@ -75,5 +80,7 @@ export function readIdpConfigFromEnv(env: Record<string, string | undefined>): P
     audience: env.VITE_IDP_AUDIENCE ?? env.PUBLIC_IDP_AUDIENCE,
     tokenStorageKey: env.VITE_IDP_TOKEN_KEY ?? "luminary_access_token",
     experienceApiBase: resolveExperienceApiBase(env),
+    iamProvider:
+      env.VITE_IAM_PROVIDER ?? env.PUBLIC_IAM_PROVIDER ?? env.IAM_PROVIDER ?? env.IDP_MODE,
   };
 }

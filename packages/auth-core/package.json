@@ -1,6 +1,6 @@
 {
   "name": "@luminaryworks/auth-core",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "license": "Polyform-Noncommercial-1.0.0",
   "description": "LuminaryWorks unified OIDC JWT verification for NestJS backends",
   "repository": {

@@ -1,3 +1,4 @@
+import { HostedOidcExperienceAdapter } from "./hosted-oidc-experience-adapter";
 import { LogtoExperienceAdapter } from "./logto-experience-adapter";
 
 /**
@@ -75,28 +76,58 @@ export interface LoginExperienceAdapter {
   createSocialSignInRequest?(target: string): SocialSignInRequest;
 }
 
-export type LoginExperienceProvider = "logto";
+export type LoginExperienceProvider = "logto" | "hosted" | "oidc" | "zitadel" | (string & {});
+
+const HOSTED_LOGIN_PROVIDERS = new Set(["hosted", "oidc", "external_oidc", "zitadel"]);
+
+function normalizeLoginExperienceProvider(provider: string): "logto" | "hosted" {
+  const key = provider.trim().toLowerCase();
+  if (!key || key === "logto") return "logto";
+  if (HOSTED_LOGIN_PROVIDERS.has(key)) return "hosted";
+  throw new Error(
+    `Unknown login experience provider "${provider}". Shipped: logto (default). Hosted OIDC: oidc / hosted / zitadel.`,
+  );
+}
 
 /**
- * Factory for built-in providers. Logto is intentionally the only built-in
- * adapter; products can supply their own adapter without shipping fake stubs.
+ * Factory for built-in login adapters.
+ *
+ * - `logto`: Experience API Headless (password + social connectors)
+ * - `hosted` / `oidc` / `zitadel`: standard OIDC Hosted Redirect (no empty vendor SDK)
+ *
+ * Products may still pass a custom `LoginExperienceAdapter`. Do not add stub
+ * adapters for unintegrated Headless APIs.
  */
 export function createLoginExperienceAdapter(
   provider: LoginExperienceProvider = "logto",
 ): LoginExperienceAdapter {
-  switch (provider) {
-    case "logto":
-      return new LogtoExperienceAdapter();
-  }
+  const kind = normalizeLoginExperienceProvider(provider);
+  if (kind === "logto") return new LogtoExperienceAdapter();
+  return new HostedOidcExperienceAdapter(provider.trim().toLowerCase() || "hosted");
 }
 
-let defaultAdapter: LoginExperienceAdapter | undefined;
+const adapterCache = new Map<string, LoginExperienceAdapter>();
 
-/** Resolve an explicit product adapter, or the backward-compatible Logto default. */
+/**
+ * Resolve an explicit product adapter, or the catalog adapter for `iamProvider`.
+ * Defaults to Logto for backward compatibility.
+ */
 export function resolveLoginExperienceAdapter(
   adapter?: LoginExperienceAdapter | null,
+  iamProvider?: string | null,
 ): LoginExperienceAdapter {
   if (adapter) return adapter;
-  defaultAdapter ??= createLoginExperienceAdapter();
-  return defaultAdapter;
+  const key = iamProvider?.trim() || "logto";
+  const cached = adapterCache.get(key);
+  if (cached) return cached;
+  const created = createLoginExperienceAdapter(key);
+  adapterCache.set(key, created);
+  return created;
+}
+
+/** `VITE_IAM_PROVIDER` / `IAM_PROVIDER` / older `IDP_MODE`. */
+export function resolveLoginExperienceProviderFromEnv(
+  env: Record<string, string | undefined> = {},
+): LoginExperienceProvider {
+  return env.VITE_IAM_PROVIDER ?? env.PUBLIC_IAM_PROVIDER ?? env.IAM_PROVIDER ?? env.IDP_MODE ?? "logto";
 }

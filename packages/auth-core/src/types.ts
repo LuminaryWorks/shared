@@ -12,6 +12,12 @@ export interface ClaimsMapping {
 export interface LuminaryAuthModuleOptions {
   /** logto | external_oidc | legacy (HS256 dev) */
   mode?: IdentityMode;
+  /**
+   * IAM catalog id (`logto` default, `oidc`, reserved `zitadel`, `legacy`).
+   * Ignored when `mode` is set. Maps onto a built-in runtime; does not ship
+   * empty vendor adapters.
+   */
+  iamProvider?: string;
   /** OIDC issuer, e.g. http://localhost:3001/oidc */
   issuer?: string;
   /** API audience / resource indicator */

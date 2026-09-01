@@ -31,7 +31,9 @@ Async configuration remains available through `LuminaryAuthModule.forRootAsync(.
 
 ## Provider-neutral runtime
 
-`mode` selects a built-in runtime. Custom integrations use `runtimeProvider`; no additional provider-selection environment variable is required.
+`mode` selects a built-in runtime. `iamProvider` (`IAM_PROVIDER` catalog: `logto` default, `oidc`, reserved `zitadel`, `legacy`) maps onto that runtime when `mode` is omitted. Custom integrations use `runtimeProvider`.
+
+The default IdP is **Logto** (frozen). ZITADEL is a reserved plugin id that reuses standard OIDC verification — this package does not ship a ZITADEL Management/Experience SDK. See MetaRepo `spec/iam-provider-selection.md`.
 
 `RuntimeIdentityProvider` converts a token into a `LuminaryPrincipal`. The canonical principal fields are:
 
@@ -64,7 +66,7 @@ LuminaryAuthModule.forRoot({
 });
 ```
 
-The package only includes working Logto, standard OIDC, and legacy adapters. It does not include empty Casdoor, ZITADEL, Keycloak, or Entra adapters.
+The package only includes working Logto, standard OIDC, and legacy adapters. Choosing `iamProvider: "zitadel"` uses `OidcRuntimeIdentityProvider`. It does not include empty Casdoor, Keycloak, or Entra adapters.
 
 ## Claims presets and resolver
 

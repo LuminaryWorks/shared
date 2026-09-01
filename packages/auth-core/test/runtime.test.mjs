@@ -4,11 +4,15 @@ import test from "node:test";
 import {
   createRuntimeIdentityProvider,
   DefaultRuntimeClaimsResolver,
+  DEFAULT_IAM_PROVIDER,
   DEFAULT_LOGTO_CLAIMS_PRESET,
+  IAM_PROVIDER_STATUS,
   LegacyRuntimeIdentityProvider,
   LogtoRuntimeIdentityProvider,
   LuminaryAuthService,
   OidcRuntimeIdentityProvider,
+  resolveIamProvider,
+  resolveIdentityMode,
 } from "../dist/index.js";
 
 function encode(value) {
@@ -71,6 +75,28 @@ test("built-in runtime selection keeps existing modes", () => {
       issuer: "https://identity.example.test",
     }) instanceof OidcRuntimeIdentityProvider,
   );
+});
+
+test("IAM_PROVIDER catalog selects Logto by default and ZITADEL as hosted OIDC", () => {
+  assert.equal(DEFAULT_IAM_PROVIDER, "logto");
+  assert.equal(resolveIamProvider().id, "logto");
+  assert.equal(resolveIamProvider("logto").status, IAM_PROVIDER_STATUS.shipped);
+  assert.equal(resolveIamProvider("zitadel").status, IAM_PROVIDER_STATUS.reserved);
+  assert.equal(resolveIamProvider("zitadel").runtimeMode, "external_oidc");
+  assert.equal(resolveIdentityMode({ iamProvider: "zitadel" }), "external_oidc");
+  assert.ok(
+    createRuntimeIdentityProvider({
+      iamProvider: "logto",
+      issuer: "https://identity.example.test/oidc",
+    }) instanceof LogtoRuntimeIdentityProvider,
+  );
+  assert.ok(
+    createRuntimeIdentityProvider({
+      iamProvider: "zitadel",
+      issuer: "https://zitadel.example.test",
+    }) instanceof OidcRuntimeIdentityProvider,
+  );
+  assert.throws(() => resolveIamProvider("casdoor"), /Unknown IAM_PROVIDER/);
 });
 
 test("legacy runtime returns a principal with an issuer-qualified key", async () => {

@@ -1,6 +1,6 @@
 {
   "name": "@luminaryworks/auth-react",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "license": "Polyform-Noncommercial-1.0.0",
   "description": "LuminaryWorks unified OIDC SPA client (Logto / enterprise IdP)",
   "repository": {
@@ -35,6 +35,7 @@
   "scripts": {
     "build": "tsup",
     "check": "tsc -p tsconfig.json --noEmit",
+    "test": "pnpm run build && node --test test/*.test.mjs",
     "prepublishOnly": "pnpm run build"
   },
   "dependencies": {
@@ -47,7 +48,8 @@
     "@luminary/tooling": "workspace:*",
     "@types/react": "^19.0.0",
     "esbuild-sass-plugin": "^3.3.1",
-    "react": "^19.0.0",
+    "react": "19.2.7",
+    "react-dom": "19.2.7",
     "sass": "^1.89.2",
     "tsup": "^8.5.0",
     "typescript": "^5.7.0"

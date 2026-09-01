@@ -1,5 +1,6 @@
 import { verifyLegacyJwt } from "../legacy-jwt.util";
 import { OidcJwtVerifier } from "../oidc-jwt.verifier";
+import { resolveIdentityMode } from "../iam-provider";
 import type {
   LuminaryAuthModuleOptions,
   LuminaryPrincipal,
@@ -87,7 +88,7 @@ export function createRuntimeIdentityProvider(
 ): RuntimeIdentityProvider {
   if (options.runtimeProvider) return options.runtimeProvider;
 
-  const mode = options.mode ?? (options.issuer ? "logto" : "legacy");
+  const mode = resolveIdentityMode(options);
   if (mode === "legacy") {
     const secret = options.legacyJwtSecret?.trim();
     if (!secret || secret === "dev-change-me") {

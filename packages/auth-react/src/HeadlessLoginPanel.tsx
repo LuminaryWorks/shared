@@ -33,7 +33,7 @@ export interface HeadlessLoginLabels {
 
 export interface HeadlessLoginPanelProps {
   config: Partial<LuminaryIdpConfig>;
-  /** Login-experience provider. Defaults to the built-in Logto adapter. */
+  /** Login-experience provider. Defaults to the catalog adapter for `config.iamProvider`. */
   experienceAdapter?: LoginExperienceAdapter;
   /** Product display name shown as brand signal */
   productName: string;
@@ -140,7 +140,10 @@ export function HeadlessLoginPanel({
   style,
   themeColor = DEFAULT_LOGIN_THEME_COLOR,
 }: HeadlessLoginPanelProps) {
-  const experienceAdapter = resolveLoginExperienceAdapter(experienceAdapterProp);
+  const experienceAdapter = resolveLoginExperienceAdapter(
+    experienceAdapterProp,
+    config.iamProvider,
+  );
   const labels = { ...defaults, ...labelsProp };
   const configured = isIdpConfigured(config);
   const [identifier, setIdentifier] = useState("");

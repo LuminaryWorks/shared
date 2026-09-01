@@ -1,4 +1,5 @@
 import { Injectable, Inject, UnauthorizedException } from "@nestjs/common";
+import { resolveIdentityMode } from "./iam-provider";
 import { createRuntimeIdentityProvider } from "./runtime/providers";
 import {
   LUMINARY_AUTH_OPTIONS,
@@ -17,9 +18,7 @@ export class LuminaryAuthService {
   ) {}
 
   private get mode(): NonNullable<LuminaryAuthModuleOptions["mode"]> {
-    if (this.options.mode) return this.options.mode;
-    if (this.options.issuer) return "logto";
-    return "legacy";
+    return resolveIdentityMode(this.options);
   }
 
   private getRuntimeProvider(): RuntimeIdentityProvider {

@@ -56,7 +56,8 @@ Override layout via `className` / `style` on the root.
 |------|---------|--------|
 | `showSocialConnectors` | `true` | `false` skips fetch and hides divider + social buttons |
 | `socialProviders` | `"auto"` | allowlist, or `[]` (same effect as `showSocialConnectors={false}`) |
-| `experienceAdapter` | `LogtoExperienceAdapter` | optional custom `LoginExperienceAdapter` |
+| `experienceAdapter` | catalog default | optional custom `LoginExperienceAdapter`; otherwise `config.iamProvider` |
+| `config.iamProvider` | `logto` | `logto` Headless; `oidc` / `zitadel` Hosted Redirect |
 
 IdP hosted `/sign-in` social row layout: `node scripts/apply-branding.mjs` (customCss wrap). Enable connectors: `ensure-sign-in-experience.mjs` + `verify-social-direct-signin.mjs`.
 
@@ -66,12 +67,14 @@ IdP hosted `/sign-in` social row layout: `node scripts/apply-branding.mjs` (cust
 to `LoginExperienceAdapter`; standard OIDC authorization code + PKCE remains in
 the OIDC client. Adapter methods are optional and are used only when both the
 matching capability and method are present. Without password support, the panel
-renders `labels.submitSso` and starts a standard hosted OIDC flow. Logto is the
-only built-in provider:
+renders `labels.submitSso` and starts a standard hosted OIDC flow. Built-in
+factory ids: `logto` (default Headless), `hosted` / `oidc` / `zitadel` (Hosted
+Redirect). ZITADEL is a reserved plugin — there is no empty Experience stub:
 
 ```ts
 import {
   createLoginExperienceAdapter,
+  HostedOidcExperienceAdapter,
   LogtoExperienceAdapter,
   resolveLoginExperienceAdapter,
   type LoginExperienceAdapter,
@@ -81,6 +84,7 @@ import {
 const logto = new LogtoExperienceAdapter();
 const sameDefault = createLoginExperienceAdapter("logto");
 const resolved = resolveLoginExperienceAdapter(logto);
+const zitadelLogin = createLoginExperienceAdapter("zitadel"); // HostedOidcExperienceAdapter
 
 // Hosted-only enterprise IdP: no Experience API methods are required.
 const hostedOnly = {
