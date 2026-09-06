@@ -4,4 +4,5 @@ export * from "./urls";
 export * from "./models";
 export * from "./vault";
 export * from "./providers";
+export * from "./speech";
 export * from "./client";

@@ -1,0 +1,13 @@
+{
+  "extends": "@luminary/tooling/tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    // Nest/Node consumers load this package via CommonJS; source stays ES import/export.
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "declaration": true
+  },
+  "include": ["src/**/*"],
+  "exclude": ["src/**/*.spec.ts"]
+}

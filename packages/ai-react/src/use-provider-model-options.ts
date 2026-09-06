@@ -1,9 +1,7 @@
+import { suggestedModelsForPurpose, type AiProviderPreset } from "@luminaryworks/ai-client/catalog";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { AiProviderPreset } from "@luminaryworks/ai-client/catalog";
 import { mergeModelOptions } from "./merge-model-options";
 import type { ListProviderModels } from "./types";
-
-const EMPTY_MODELS: string[] = [];
 
 export function useProviderModelOptions({
   listModels,
@@ -13,6 +11,7 @@ export function useProviderModelOptions({
   connectionUid,
   currentModel,
   preset,
+  purpose,
 }: {
   listModels: ListProviderModels;
   providerType?: string;
@@ -21,13 +20,17 @@ export function useProviderModelOptions({
   connectionUid?: string;
   currentModel?: string;
   preset?: AiProviderPreset;
+  purpose?: string;
 }): {
   models: string[];
   source: "live" | "catalog";
   loading: boolean;
   refresh: (override?: { secret?: string; baseUrl?: string }) => Promise<string[]>;
 } {
-  const catalog = preset?.suggestedModels ?? EMPTY_MODELS;
+  const catalog = useMemo(
+    () => suggestedModelsForPurpose(preset, purpose),
+    [preset, purpose],
+  );
   const [models, setModels] = useState<string[]>(catalog);
   const [source, setSource] = useState<"live" | "catalog">("catalog");
   const [loading, setLoading] = useState(false);
@@ -49,11 +52,18 @@ export function useProviderModelOptions({
       }
       setLoading(true);
       try {
+        const speechPurpose =
+          purpose?.includes("stt") && !purpose.includes("chat")
+            ? "stt"
+            : purpose?.includes("tts") && !purpose.includes("chat") && !purpose.includes("stt")
+              ? "tts"
+              : "chat";
         const result = await listModels({
           providerType,
           baseUrl: nextBaseUrl,
           ...(nextSecret ? { secret: nextSecret } : {}),
           connectionUid,
+          purpose: speechPurpose,
         });
         const next = result.models.length > 0 ? result.models : catalog;
         setModels(next);
@@ -67,7 +77,7 @@ export function useProviderModelOptions({
         setLoading(false);
       }
     },
-    [listModels, providerType, baseUrl, secret, connectionUid, catalog],
+    [listModels, providerType, baseUrl, secret, connectionUid, catalog, purpose],
   );
 
   const options = useMemo(

@@ -1,11 +1,18 @@
 import { completeLocal, streamLocal } from "./providers";
+import { synthesizeLocal, transcribeLocal } from "./speech";
 import type {
   AiClientOptions,
   AiCompleteResult,
+  AssessSpeechInput,
+  AssessSpeechResult,
   CompleteChatInput,
   EmbedInput,
   EmbedResult,
   StreamEvent,
+  SynthesizeInput,
+  SynthesizeResult,
+  TranscribeInput,
+  TranscribeResult,
 } from "./types";
 
 export class LuminaryAiClient {
@@ -72,32 +79,72 @@ export class LuminaryAiClient {
     };
   }
 
-  async transcribe(_audio: Buffer, _mime = "audio/webm"): Promise<{ text: string; traceId: string }> {
+  async transcribe(input: TranscribeInput | Buffer, mime = "audio/webm"): Promise<TranscribeResult> {
+    const req: TranscribeInput = Buffer.isBuffer(input) ? { audio: input, mime } : input;
     const platform = this.platformUrl();
-    if (!platform) {
-      return { text: "", traceId: `trc_stt_${Date.now().toString(36)}` };
+    if (platform && !req.ephemeral) {
+      const res = await fetch(`${platform.replace(/\/$/, "")}/v1/audio/transcribe`, {
+        method: "POST",
+        headers: this.headers(),
+        body: JSON.stringify({
+          connectionUid: req.connectionUid,
+          mime: req.mime ?? mime,
+          language: req.language,
+          audioBase64: req.audio.toString("base64"),
+        }),
+        signal: req.signal,
+      });
+      if (!res.ok) throw new Error(`STT ${res.status}`);
+      return (await res.json()) as TranscribeResult;
     }
-    const res = await fetch(`${platform.replace(/\/$/, "")}/v1/audio/transcribe`, {
-      method: "POST",
-      headers: this.headers(),
-      body: JSON.stringify({ mime: _mime, bytes: _audio.length }),
+    const eph = req.ephemeral;
+    if (!eph) throw new Error("ephemeral provider required when LUMINARY_AI_BASE_URL is unset");
+    return transcribeLocal({
+      providerType: eph.providerType,
+      baseUrl: eph.baseUrl,
+      model: req.model || eph.model,
+      secret: eph.secret,
+      audio: req.audio,
+      mime: req.mime ?? mime,
+      language: req.language,
+      signal: req.signal,
     });
-    if (!res.ok) throw new Error(`STT ${res.status}`);
-    return (await res.json()) as { text: string; traceId: string };
   }
 
-  async synthesize(text: string): Promise<{ audioBase64: string; mime: string; traceId: string }> {
+  async assessSpeech(_input: AssessSpeechInput): Promise<AssessSpeechResult> {
+    return { scored: false, reason: "not_supported" };
+  }
+
+  async synthesize(input: SynthesizeInput | string): Promise<SynthesizeResult> {
+    const req: SynthesizeInput = typeof input === "string" ? { text: input } : input;
     const platform = this.platformUrl();
-    if (!platform) {
-      return { audioBase64: "", mime: "audio/mpeg", traceId: `trc_tts_${Date.now().toString(36)}` };
+    if (platform && !req.ephemeral) {
+      const res = await fetch(`${platform.replace(/\/$/, "")}/v1/audio/synthesize`, {
+        method: "POST",
+        headers: this.headers(),
+        body: JSON.stringify({
+          connectionUid: req.connectionUid,
+          text: req.text,
+          voice: req.voice,
+          locale: req.locale,
+          speed: req.speed,
+        }),
+        signal: req.signal,
+      });
+      if (!res.ok) throw new Error(`TTS ${res.status}`);
+      return (await res.json()) as SynthesizeResult;
     }
-    const res = await fetch(`${platform.replace(/\/$/, "")}/v1/audio/synthesize`, {
-      method: "POST",
-      headers: this.headers(),
-      body: JSON.stringify({ text }),
+    const eph = req.ephemeral;
+    if (!eph) throw new Error("ephemeral provider required when LUMINARY_AI_BASE_URL is unset");
+    return synthesizeLocal({
+      providerType: eph.providerType,
+      baseUrl: eph.baseUrl,
+      model: req.model || eph.model,
+      secret: eph.secret,
+      text: req.text,
+      voice: req.voice,
+      signal: req.signal,
     });
-    if (!res.ok) throw new Error(`TTS ${res.status}`);
-    return (await res.json()) as { audioBase64: string; mime: string; traceId: string };
   }
 
   private headers(): Record<string, string> {

@@ -15,6 +15,23 @@ export function catalogModels(providerType: string): string[] {
   return PROVIDER_CHAT_CATALOG[providerType as AiProviderType] ?? [];
 }
 
+export function isMainstreamSpeechModel(
+  providerType: string,
+  id: string,
+  purpose: "stt" | "tts",
+): boolean {
+  const lower = id.trim().toLowerCase();
+  if (!lower) return false;
+  if (purpose === "stt") {
+    if (/whisper|asr|transcrib|speech-to-text/i.test(lower)) return true;
+    if (providerType === "gemini") return /gemini/i.test(lower) && !/embed|image|tts/i.test(lower);
+    return false;
+  }
+  if (/tts/i.test(lower) && !/whisper|transcrib/i.test(lower)) return true;
+  if (providerType === "gemini") return /tts/i.test(lower);
+  return false;
+}
+
 export function isMainstreamChatModel(providerType: string, id: string): boolean {
   const lower = id.trim().toLowerCase();
   if (!lower || NON_CHAT.test(lower)) return false;
@@ -44,12 +61,21 @@ export function isMainstreamChatModel(providerType: string, id: string): boolean
   }
 }
 
-export function filterLiveModels(providerType: string, ids: string[]): string[] {
+export function filterLiveModels(
+  providerType: string,
+  ids: string[],
+  purpose: "chat" | "stt" | "tts" = "chat",
+): string[] {
   const seen = new Set<string>();
   const out: string[] = [];
   for (const raw of ids) {
     const id = normalizeModelId(providerType, raw);
-    if (!id || seen.has(id) || !isMainstreamChatModel(providerType, id)) continue;
+    if (!id || seen.has(id)) continue;
+    const ok =
+      purpose === "chat"
+        ? isMainstreamChatModel(providerType, id)
+        : isMainstreamSpeechModel(providerType, id, purpose);
+    if (!ok) continue;
     seen.add(id);
     out.push(id);
   }
@@ -166,14 +192,23 @@ export async function fetchLiveModelIds(input: {
   return parseOpenAiCompatibleModelIds(body);
 }
 
+export function catalogModelsForPurpose(
+  providerType: string,
+  purpose: "chat" | "stt" | "tts" = "chat",
+): string[] {
+  return filterLiveModels(providerType, catalogModels(providerType), purpose);
+}
+
 export async function listProviderModels(input: {
   providerType: string;
   baseUrl?: string | null;
   secret?: string;
   timeoutMs?: number;
+  purpose?: "chat" | "stt" | "tts";
   onError?: (error: unknown) => void;
 }): Promise<AiProviderModelList> {
-  const catalog = catalogModels(input.providerType);
+  const purpose = input.purpose ?? "chat";
+  const catalog = catalogModelsForPurpose(input.providerType, purpose);
   const secret = input.secret?.trim();
   if (!secret || input.providerType === "luminary-managed") {
     return { source: "catalog", models: catalog };
@@ -187,6 +222,7 @@ export async function listProviderModels(input: {
         secret,
         timeoutMs: input.timeoutMs,
       }),
+      purpose,
     );
     return {
       source: live.length > 0 ? "live" : "catalog",

@@ -18,6 +18,7 @@ CI **不使用** `NPM_TOKEN`。`LuminaryWorks/shared` 的 `master` / `main` 有�
 | `@luminaryworks/notification` | `packages/notification` | 通知（Email） |
 | `@luminaryworks/ai-client` | `packages/ai-client` | AI 网关客户端（BYOK / 中央 ai-platform） |
 | `@luminaryworks/ai-react` | `packages/ai-react` | Ant Design BYOK AI 连接表单 |
+| `@luminaryworks/control-manifest` | `packages/control-manifest` | 部署 Control Manifest（JSON Schema + 解析 + preflight；不含任何 secret） |
 
 版本以各包 `package.json` 与 [npmjs `@luminaryworks`](https://www.npmjs.com/org/luminaryworks) 为准，不必在本文件手写。
 
@@ -63,7 +64,7 @@ gh workflow run publish-packages.yml --repo LuminaryWorks/shared
 | Environment | **留空**（workflow 未使用 GitHub Environment） |
 | Allowed actions | **勾选 `npm publish`** |
 
-包列表：`@luminaryworks/ai-client`、`ai-react`、`auth-core`、`auth-react`、`auth-dev-proxy`、`pal`、`entitlement-client`、`notification`。
+包列表：`@luminaryworks/ai-client`、`ai-react`、`auth-core`、`auth-react`、`auth-dev-proxy`、`pal`、`entitlement-client`、`notification`、`control-manifest`。
 
 **`ai-client` / `ai-react` 本机首发之后，必须立刻给这两个包各绑一次。** 漏绑时 CI 就是 `ENEEDAUTH`。
 

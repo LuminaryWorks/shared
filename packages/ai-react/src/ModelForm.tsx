@@ -53,6 +53,7 @@ export function ModelForm({
   const baseUrl = Form.useWatch("baseUrl", form);
   const secret = Form.useWatch("secret", form);
   const model = Form.useWatch("model", form);
+  const purpose = Form.useWatch("purpose", form);
   const preset = getProviderPreset(providerType || "deepseek");
   const lastLiveKey = useRef("");
   const fetchingRef = useRef(false);
@@ -67,6 +68,7 @@ export function ModelForm({
     connectionUid: current?.uid,
     currentModel: model,
     preset,
+    purpose,
   });
   const canRefresh = canRefreshProviderModels({
     secret,

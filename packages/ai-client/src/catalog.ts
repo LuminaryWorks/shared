@@ -68,6 +68,8 @@ export const AI_PROVIDER_PRESETS: AiProviderPreset[] = [
       "qwen3-max",
       "qwen3.8-max",
       "qwen3.7-plus",
+      "qwen3-asr-flash",
+      "qwen3-tts-flash",
     ],
     requiresBaseUrl: false,
     secretRequired: true,
@@ -159,6 +161,8 @@ export const AI_PROVIDER_PRESETS: AiProviderPreset[] = [
       "doubao-seed-2-0-lite-260428",
       "deepseek-v4-pro-ga-260813",
       "doubao-seed-1-6-251015",
+      "whisper-1",
+      "tts-1",
     ],
     requiresBaseUrl: false,
     secretRequired: true,
@@ -183,6 +187,9 @@ export const AI_PROVIDER_PRESETS: AiProviderPreset[] = [
       "gpt-4o-mini",
       "o3",
       "o4-mini",
+      "whisper-1",
+      "gpt-4o-transcribe",
+      "tts-1",
     ],
     requiresBaseUrl: false,
     secretRequired: true,
@@ -228,6 +235,7 @@ export const AI_PROVIDER_PRESETS: AiProviderPreset[] = [
       "gemini-2.5-flash",
       "gemini-2.5-flash-lite",
       "gemini-2.5-pro",
+      "gemini-2.5-flash-preview-tts",
     ],
     requiresBaseUrl: false,
     secretRequired: true,
@@ -362,4 +370,25 @@ export function connectionHasPurpose(
   const list = parsePurposes(stored);
   if (list.length === 0) return wanted === "chat";
   return list.includes(wanted);
+}
+
+export function suggestedModelsForPurpose(
+  preset: AiProviderPreset | undefined,
+  purpose?: string | null,
+): string[] {
+  const models = preset?.suggestedModels ?? [];
+  const purposes = parsePurposes(purpose);
+  const speechOnly =
+    purposes.includes("stt") && !purposes.includes("chat")
+      ? "stt"
+      : purposes.includes("tts") && !purposes.includes("chat") && !purposes.includes("stt")
+        ? "tts"
+        : "chat";
+  if (speechOnly === "stt") {
+    return models.filter((id) => /whisper|asr|transcrib|speech-to-text/i.test(id) || /gemini/i.test(id));
+  }
+  if (speechOnly === "tts") {
+    return models.filter((id) => /tts/i.test(id));
+  }
+  return models.filter((id) => !/whisper|tts|asr|transcrib/i.test(id));
 }

@@ -1,12 +1,12 @@
 {
-  "name": "@luminaryworks/entitlement-client",
-  "version": "0.2.1",
+  "name": "@luminaryworks/control-manifest",
+  "version": "0.1.0",
   "license": "Polyform-Noncommercial-1.0.0",
-  "description": "LuminaryWorks Entitlement NestJS client — TTL cache, ENTITLEMENT_MODE, stable DTO/errors",
+  "description": "LuminaryWorks Control Manifest — static deployment profile schema, parser, env overlay and preflight validation for federated product suites",
   "repository": {
     "type": "git",
     "url": "https://github.com/LuminaryWorks/shared.git",
-    "directory": "packages/entitlement-client"
+    "directory": "packages/control-manifest"
   },
   "publishConfig": {
     "registry": "https://registry.npmjs.org",
@@ -17,12 +17,15 @@
   "files": [
     "dist/**/*.js",
     "dist/**/*.d.ts",
+    "schema/control-manifest.schema.json",
     "README.md",
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && node scripts/emit-schema.mjs",
     "check": "tsc -p tsconfig.json --noEmit",
+    "schema:emit": "node scripts/emit-schema.mjs",
+    "schema:check": "node scripts/emit-schema.mjs --check",
     "test": "rstest",
     "prepublishOnly": "pnpm run build",
     "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
@@ -30,19 +33,10 @@
     "prepack": "pnpm run build"
   },
   "dependencies": {},
-  "peerDependencies": {
-    "@nestjs/common": "^10.0.0 || ^11.0.0",
-    "@nestjs/core": "^10.0.0 || ^11.0.0",
-    "reflect-metadata": "^0.2.0"
-  },
   "devDependencies": {
     "@luminary/tooling": "workspace:*",
-    "@nestjs/common": "^11.0.0",
-    "@nestjs/core": "^11.0.0",
     "@rstest/core": "^0.4.1",
     "@types/node": "^24.0.0",
-    "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.2",
     "typescript": "^5.7.0"
   },
   "exports": {
@@ -50,7 +44,9 @@
       "types": "./dist/index.d.ts",
       "require": "./dist/index.js",
       "default": "./dist/index.js"
-    }
+    },
+    "./schema/control-manifest.schema.json": "./schema/control-manifest.schema.json",
+    "./package.json": "./package.json"
   },
   "engines": {
     "node": ">=24.0.0"

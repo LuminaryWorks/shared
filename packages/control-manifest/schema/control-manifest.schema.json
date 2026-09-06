@@ -1,0 +1,469 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.luminaryworks.dev/control-manifest/v1.json",
+  "title": "LuminaryWorks Control Manifest",
+  "description": "Static description of a federated LuminaryWorks deployment: profile, optional central services, contract versions, capability modes and degradation. Never contains secrets, business resources or dynamic service registration.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "manifestVersion",
+    "profile",
+    "stage",
+    "capabilities",
+    "services"
+  ],
+  "properties": {
+    "manifestVersion": {
+      "const": 1
+    },
+    "profile": {
+      "enum": [
+        "standalone",
+        "control-plane",
+        "agent-commerce",
+        "smart-site",
+        "air-gapped"
+      ]
+    },
+    "stage": {
+      "enum": [
+        "dev",
+        "lab",
+        "pilot",
+        "production"
+      ],
+      "description": "Honesty boundary: dev | lab | pilot | production."
+    },
+    "capabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "identity",
+        "entitlement",
+        "ai",
+        "notification"
+      ],
+      "properties": {
+        "identity": {
+          "enum": [
+            "central",
+            "external_oidc",
+            "local"
+          ]
+        },
+        "entitlement": {
+          "enum": [
+            "off",
+            "shadow_read",
+            "enforce",
+            "offline_license"
+          ]
+        },
+        "ai": {
+          "enum": [
+            "off",
+            "central",
+            "local_byok"
+          ]
+        },
+        "notification": {
+          "enum": [
+            "none",
+            "smtp"
+          ]
+        }
+      }
+    },
+    "services": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "identity": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "url",
+            "required",
+            "apiVersion",
+            "schemaVersion"
+          ],
+          "properties": {
+            "url": {
+              "type": "string",
+              "format": "uri",
+              "pattern": "^https?://",
+              "description": "Base URL reachable by the consuming plane. Must not embed credentials."
+            },
+            "required": {
+              "type": "boolean",
+              "description": "false means the consumer still starts and degrades as declared."
+            },
+            "apiVersion": {
+              "type": "string",
+              "minLength": 1,
+              "description": "HTTP surface version, e.g. v1."
+            },
+            "schemaVersion": {
+              "type": "string",
+              "minLength": 1,
+              "description": "DTO / event payload schema major version, e.g. 1."
+            }
+          }
+        },
+        "authGateway": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "url",
+            "required",
+            "apiVersion",
+            "schemaVersion"
+          ],
+          "properties": {
+            "url": {
+              "type": "string",
+              "format": "uri",
+              "pattern": "^https?://",
+              "description": "Base URL reachable by the consuming plane. Must not embed credentials."
+            },
+            "required": {
+              "type": "boolean",
+              "description": "false means the consumer still starts and degrades as declared."
+            },
+            "apiVersion": {
+              "type": "string",
+              "minLength": 1,
+              "description": "HTTP surface version, e.g. v1."
+            },
+            "schemaVersion": {
+              "type": "string",
+              "minLength": 1,
+              "description": "DTO / event payload schema major version, e.g. 1."
+            }
+          }
+        },
+        "entitlement": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "url",
+            "required",
+            "apiVersion",
+            "schemaVersion"
+          ],
+          "properties": {
+            "url": {
+              "type": "string",
+              "format": "uri",
+              "pattern": "^https?://",
+              "description": "Base URL reachable by the consuming plane. Must not embed credentials."
+            },
+            "required": {
+              "type": "boolean",
+              "description": "false means the consumer still starts and degrades as declared."
+            },
+            "apiVersion": {
+              "type": "string",
+              "minLength": 1,
+              "description": "HTTP surface version, e.g. v1."
+            },
+            "schemaVersion": {
+              "type": "string",
+              "minLength": 1,
+              "description": "DTO / event payload schema major version, e.g. 1."
+            }
+          }
+        },
+        "ai": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "url",
+            "required",
+            "apiVersion",
+            "schemaVersion"
+          ],
+          "properties": {
+            "url": {
+              "type": "string",
+              "format": "uri",
+              "pattern": "^https?://",
+              "description": "Base URL reachable by the consuming plane. Must not embed credentials."
+            },
+            "required": {
+              "type": "boolean",
+              "description": "false means the consumer still starts and degrades as declared."
+            },
+            "apiVersion": {
+              "type": "string",
+              "minLength": 1,
+              "description": "HTTP surface version, e.g. v1."
+            },
+            "schemaVersion": {
+              "type": "string",
+              "minLength": 1,
+              "description": "DTO / event payload schema major version, e.g. 1."
+            }
+          }
+        },
+        "notification": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "url",
+            "required",
+            "apiVersion",
+            "schemaVersion"
+          ],
+          "properties": {
+            "url": {
+              "type": "string",
+              "format": "uri",
+              "pattern": "^https?://",
+              "description": "Base URL reachable by the consuming plane. Must not embed credentials."
+            },
+            "required": {
+              "type": "boolean",
+              "description": "false means the consumer still starts and degrades as declared."
+            },
+            "apiVersion": {
+              "type": "string",
+              "minLength": 1,
+              "description": "HTTP surface version, e.g. v1."
+            },
+            "schemaVersion": {
+              "type": "string",
+              "minLength": 1,
+              "description": "DTO / event payload schema major version, e.g. 1."
+            }
+          }
+        },
+        "observability": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "url",
+            "required",
+            "apiVersion",
+            "schemaVersion"
+          ],
+          "properties": {
+            "url": {
+              "type": "string",
+              "format": "uri",
+              "pattern": "^https?://",
+              "description": "Base URL reachable by the consuming plane. Must not embed credentials."
+            },
+            "required": {
+              "type": "boolean",
+              "description": "false means the consumer still starts and degrades as declared."
+            },
+            "apiVersion": {
+              "type": "string",
+              "minLength": 1,
+              "description": "HTTP surface version, e.g. v1."
+            },
+            "schemaVersion": {
+              "type": "string",
+              "minLength": 1,
+              "description": "DTO / event payload schema major version, e.g. 1."
+            }
+          }
+        }
+      }
+    },
+    "degradation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "identity": {
+          "const": "fail_closed",
+          "description": "AuthN never degrades to anonymous access."
+        },
+        "entitlement": {
+          "enum": [
+            "fail_closed",
+            "fail_open_local",
+            "offline_license"
+          ]
+        },
+        "ai": {
+          "enum": [
+            "fail_closed",
+            "disable_feature",
+            "fallback_local_byok"
+          ]
+        },
+        "notification": {
+          "enum": [
+            "fail_closed",
+            "queue",
+            "drop"
+          ]
+        }
+      }
+    },
+    "products": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "dataluminary": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "url",
+            "required"
+          ],
+          "properties": {
+            "url": {
+              "type": "string",
+              "format": "uri",
+              "pattern": "^https?://"
+            },
+            "required": {
+              "type": "boolean"
+            },
+            "apiVersion": {
+              "type": "string",
+              "minLength": 1
+            },
+            "schemaVersion": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "blockyedu": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "url",
+            "required"
+          ],
+          "properties": {
+            "url": {
+              "type": "string",
+              "format": "uri",
+              "pattern": "^https?://"
+            },
+            "required": {
+              "type": "boolean"
+            },
+            "apiVersion": {
+              "type": "string",
+              "minLength": 1
+            },
+            "schemaVersion": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "doerflow": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "url",
+            "required"
+          ],
+          "properties": {
+            "url": {
+              "type": "string",
+              "format": "uri",
+              "pattern": "^https?://"
+            },
+            "required": {
+              "type": "boolean"
+            },
+            "apiVersion": {
+              "type": "string",
+              "minLength": 1
+            },
+            "schemaVersion": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "vistacast": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "url",
+            "required"
+          ],
+          "properties": {
+            "url": {
+              "type": "string",
+              "format": "uri",
+              "pattern": "^https?://"
+            },
+            "required": {
+              "type": "boolean"
+            },
+            "apiVersion": {
+              "type": "string",
+              "minLength": 1
+            },
+            "schemaVersion": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "vistaremote": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "url",
+            "required"
+          ],
+          "properties": {
+            "url": {
+              "type": "string",
+              "format": "uri",
+              "pattern": "^https?://"
+            },
+            "required": {
+              "type": "boolean"
+            },
+            "apiVersion": {
+              "type": "string",
+              "minLength": 1
+            },
+            "schemaVersion": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "syncrobrain": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "url",
+            "required"
+          ],
+          "properties": {
+            "url": {
+              "type": "string",
+              "format": "uri",
+              "pattern": "^https?://"
+            },
+            "required": {
+              "type": "boolean"
+            },
+            "apiVersion": {
+              "type": "string",
+              "minLength": 1
+            },
+            "schemaVersion": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      }
+    }
+  }
+}

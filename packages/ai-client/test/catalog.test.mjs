@@ -16,6 +16,7 @@ import {
   pickDefaultModel,
   serializePurposes,
   showPurposeSelect,
+  suggestedModelsForPurpose,
   supportedPurposesOf,
 } from "../dist/catalog.js";
 import {
@@ -88,12 +89,25 @@ test("purpose is multi-select only when the vendor supports more than chat", () 
   assert.equal(connectionHasPurpose(null, "chat"), true);
 });
 
+test("suggested models for STT/TTS hide chat ids", () => {
+  const openai = getProviderPreset("openai");
+  assert.ok(suggestedModelsForPurpose(openai, "chat").includes("gpt-5.6"));
+  assert.equal(suggestedModelsForPurpose(openai, "chat").includes("whisper-1"), false);
+  assert.deepEqual(suggestedModelsForPurpose(openai, "stt"), ["whisper-1", "gpt-4o-transcribe"]);
+  assert.deepEqual(suggestedModelsForPurpose(openai, "tts"), ["tts-1"]);
+});
+
 test("list-model helpers keep catalog first and drop non-chat ids", () => {
   assert.ok(catalogModels("openai").includes("gpt-5.6"));
   assert.deepEqual(
     filterLiveModels("openai", ["gpt-5.6", "text-embedding-3-small", "whisper-1"]),
     ["gpt-5.6"],
   );
+  assert.deepEqual(
+    filterLiveModels("openai", ["gpt-5.6", "whisper-1", "tts-1", "gpt-4o-transcribe"], "stt"),
+    ["whisper-1", "gpt-4o-transcribe"],
+  );
+  assert.deepEqual(filterLiveModels("openai", ["gpt-5.6", "whisper-1", "tts-1"], "tts"), ["tts-1"]);
   assert.deepEqual(mergeCatalogAndLive(["gpt-5.6", "gpt-4o"], ["gpt-4o", "gpt-5.4", "o3"]), [
     "gpt-5.6",
     "gpt-4o",

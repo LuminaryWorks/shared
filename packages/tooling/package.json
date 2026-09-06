@@ -1,6 +1,6 @@
 {
   "name": "@luminary/tooling",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "license": "Polyform-Noncommercial-1.0.0",
   "description": "LuminaryWorks shared Biome preset and tsconfig base",
   "files": [

@@ -32,6 +32,7 @@ export interface ListProviderModelsInput {
   baseUrl?: string;
   secret?: string;
   connectionUid?: string;
+  purpose?: "chat" | "stt" | "tts";
 }
 
 export interface ListProviderModelsResult {

@@ -256,6 +256,61 @@ export class EntitlementClient {
     });
   }
 
+  async ensurePromotion(input: {
+    productCode: string;
+    subjectId: string;
+    promotionCode: string;
+    accessToken?: string;
+  }) {
+    if (this.mode === "off") return { skipped: true as const, reason: "ENTITLEMENT_MODE=off" };
+    return this.request<{ created: boolean; grantId: string; promotionCode: string }>(
+      "POST",
+      "/v1/promotions/ensure",
+      {
+        actAs: input.subjectId,
+        accessToken: input.accessToken,
+        body: {
+          productCode: input.productCode,
+          promotionCode: input.promotionCode,
+        },
+      },
+    );
+  }
+
+  async createOrder(input: {
+    subjectId: string;
+    productCode?: string;
+    planCode?: string;
+    packSku?: string;
+    paymentProvider?: string;
+    accessToken?: string;
+  }) {
+    if (this.mode === "off") {
+      throw new EntitlementClientError("ENTITLEMENT_SERVICE_UNAVAILABLE", "Orders require central entitlement");
+    }
+    return this.request("POST", "/v1/orders", {
+      actAs: input.subjectId,
+      accessToken: input.accessToken,
+      body: {
+        productCode: input.productCode,
+        planCode: input.planCode,
+        packSku: input.packSku,
+        paymentProvider: input.paymentProvider ?? "mock",
+      },
+    });
+  }
+
+  async payOrder(input: { subjectId: string; orderId: string; accessToken?: string }) {
+    if (this.mode === "off") {
+      throw new EntitlementClientError("ENTITLEMENT_SERVICE_UNAVAILABLE", "Orders require central entitlement");
+    }
+    return this.request("POST", `/v1/orders/${encodeURIComponent(input.orderId)}/pay`, {
+      actAs: input.subjectId,
+      accessToken: input.accessToken,
+      body: {},
+    });
+  }
+
   /**
    * Local Ed25519 License verify for private deployments.
    * Returns commercial feature/quota facts only — never authorizes Casbin resource ACL.
