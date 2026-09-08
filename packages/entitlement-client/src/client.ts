@@ -10,6 +10,7 @@ import type {
   CheckItem,
   CheckResultItem,
   ConsumeResult,
+  AllocationResult,
   EntitlementClientOptions,
   EntitlementMode,
   EntitlementSnapshot,
@@ -223,6 +224,108 @@ export class EntitlementClient {
           idempotencyKey: input.idempotencyKey,
         },
       });
+      this.invalidate(input.subjectId, input.productCode);
+      return result;
+    } catch (error) {
+      if (this.mode === "shadow_read") {
+        this.options.onShadowDiff?.({
+          productCode: input.productCode,
+          subjectId: input.subjectId,
+          error,
+        });
+      }
+      throw this.asUnavailable(error);
+    }
+  }
+
+  async allocate(input: {
+    productCode: string;
+    subjectId: string;
+    featureCode: string;
+    resourceId: string;
+    amount: number;
+    ownerKind?: string | null;
+    ownerId?: string | null;
+    source?: string | null;
+    sourceRef?: string | null;
+    idempotencyKey?: string;
+    organizationId?: string | null;
+    deploymentId?: string | null;
+    accessToken?: string;
+  }): Promise<AllocationResult> {
+    if (this.mode === "off") {
+      throw new EntitlementClientError(
+        "ENTITLEMENT_SERVICE_UNAVAILABLE",
+        "Gauge allocate requires ENTITLEMENT_MODE=enforce (or shadow with central)",
+      );
+    }
+    try {
+      const result = await this.request<AllocationResult>("POST", "/v1/entitlements/allocations", {
+        actAs: input.subjectId,
+        accessToken: input.accessToken,
+        headers: input.idempotencyKey ? { "Idempotency-Key": input.idempotencyKey } : undefined,
+        body: {
+          productCode: input.productCode,
+          featureCode: input.featureCode,
+          resourceId: input.resourceId,
+          amount: input.amount,
+          organizationId: input.organizationId,
+          deploymentId: input.deploymentId,
+          ownerKind: input.ownerKind,
+          ownerId: input.ownerId,
+          source: input.source,
+          sourceRef: input.sourceRef,
+          idempotencyKey: input.idempotencyKey,
+        },
+      });
+      this.invalidate(input.subjectId, input.productCode);
+      return result;
+    } catch (error) {
+      if (this.mode === "shadow_read") {
+        this.options.onShadowDiff?.({
+          productCode: input.productCode,
+          subjectId: input.subjectId,
+          error,
+        });
+      }
+      throw this.asUnavailable(error);
+    }
+  }
+
+  async release(input: {
+    productCode: string;
+    subjectId: string;
+    featureCode: string;
+    resourceId: string;
+    idempotencyKey?: string;
+    organizationId?: string | null;
+    deploymentId?: string | null;
+    accessToken?: string;
+  }): Promise<AllocationResult> {
+    if (this.mode === "off") {
+      throw new EntitlementClientError(
+        "ENTITLEMENT_SERVICE_UNAVAILABLE",
+        "Gauge release requires ENTITLEMENT_MODE=enforce (or shadow with central)",
+      );
+    }
+    try {
+      const result = await this.request<AllocationResult>(
+        "POST",
+        "/v1/entitlements/allocations/release",
+        {
+          actAs: input.subjectId,
+          accessToken: input.accessToken,
+          headers: input.idempotencyKey ? { "Idempotency-Key": input.idempotencyKey } : undefined,
+          body: {
+            productCode: input.productCode,
+            featureCode: input.featureCode,
+            resourceId: input.resourceId,
+            organizationId: input.organizationId,
+            deploymentId: input.deploymentId,
+            idempotencyKey: input.idempotencyKey,
+          },
+        },
+      );
       this.invalidate(input.subjectId, input.productCode);
       return result;
     } catch (error) {

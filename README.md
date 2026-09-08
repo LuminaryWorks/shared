@@ -16,6 +16,7 @@
 | `@luminaryworks/notification` | ✅ 0.1.0 | NotificationModule（SMTP） |
 | `@luminaryworks/entitlement-client` | ✅ 0.1.0 | NestJS 权益客户端 |
 | `@luminaryworks/control-manifest` | ✅ 0.1.0 | 部署 Control Manifest：profile / 能力协商 / 降级校验 |
+| `@luminaryworks/object-storage` | ✅ 0.1.0 | MinIO 兼容对象存储：ObjectStoragePort、作用域键、Trial 清理、水位准入 |
 
 > 品牌资源（六产品 Logo + 配色）：[`brand/`](./brand/README.md) — 全生态唯一来源。
 

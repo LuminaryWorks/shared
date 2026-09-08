@@ -23,6 +23,7 @@ const PACKAGES = [
   "packages/notification",
   "packages/entitlement-client",
   "packages/control-manifest",
+  "packages/object-storage",
 ];
 
 const BUMP_KIND = process.env.PUBLISH_BUMP || "patch";

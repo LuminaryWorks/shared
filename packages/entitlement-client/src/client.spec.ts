@@ -138,4 +138,67 @@ describe("EntitlementClient modes", () => {
       client.getEntitlements({ productCode: "dataluminary", subjectId: "user-b" }),
     ).rejects.toMatchObject({ code: "ENTITLEMENT_SERVICE_UNAVAILABLE" });
   });
+
+  it("allocate and release call central and send X-Act-As-Subject, never body.subjectId", async () => {
+    const calls: Array<{ url: string; init?: RequestInit }> = [];
+    const client = new EntitlementClient({
+      baseUrl: "http://entitlement.test",
+      mode: "enforce",
+      serviceApiKey: "k",
+      fetchImpl: (async (url, init) => {
+        calls.push({ url: String(url), init });
+        return new Response(
+          JSON.stringify({
+            featureCode: "dashboard.count",
+            resourceId: "dash_1",
+            amount: 1,
+            previousAmount: 0,
+            used: 1,
+            remaining: 4,
+            limit: 5,
+            meteringMode: "gauge",
+            unchanged: false,
+            released: false,
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }) as typeof fetch,
+    });
+    await client.allocate({
+      productCode: "dataluminary",
+      subjectId: "user-a",
+      featureCode: "dashboard.count",
+      resourceId: "dash_1",
+      amount: 1,
+    });
+    expect(calls[0]?.url).toContain("/v1/entitlements/allocations");
+    expect((calls[0]?.init?.headers as Record<string, string>)["X-Act-As-Subject"]).toBe("user-a");
+    const body = JSON.parse(String(calls[0]?.init?.body));
+    expect(body.subjectId).toBeUndefined();
+    expect(body.resourceId).toBe("dash_1");
+    await client.release({
+      productCode: "dataluminary",
+      subjectId: "user-a",
+      featureCode: "dashboard.count",
+      resourceId: "dash_1",
+    });
+    expect(calls[1]?.url).toContain("/v1/entitlements/allocations/release");
+  });
+
+  it("allocate refuses mode=off", async () => {
+    const client = new EntitlementClient({
+      baseUrl: "http://entitlement.test",
+      mode: "off",
+      serviceApiKey: "k",
+    });
+    await expect(
+      client.allocate({
+        productCode: "dataluminary",
+        subjectId: "u1",
+        featureCode: "dashboard.count",
+        resourceId: "d1",
+        amount: 1,
+      }),
+    ).rejects.toMatchObject({ code: "ENTITLEMENT_SERVICE_UNAVAILABLE" });
+  });
 });

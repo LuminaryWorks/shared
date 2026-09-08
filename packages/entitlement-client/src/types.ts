@@ -63,6 +63,7 @@ export interface QuotaSnapshot {
   used: number;
   remaining: number | null;
   period: string;
+  meteringMode?: "counter" | "gauge";
   sources: string[];
 }
 
@@ -119,6 +120,19 @@ export interface ConsumeResult {
   used: number;
   remaining: number | null;
   limit: number | null;
+}
+
+export interface AllocationResult {
+  featureCode: string;
+  resourceId: string;
+  amount: number;
+  previousAmount: number;
+  used: number;
+  remaining: number | null;
+  limit: number | null;
+  meteringMode: "gauge";
+  unchanged: boolean;
+  released: boolean;
 }
 
 export interface EntitlementClientOptions {

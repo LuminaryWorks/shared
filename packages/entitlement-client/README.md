@@ -46,6 +46,8 @@ const result = await client.verifyLicenseLocal(signedLicense, {
 
 Commercial rights are never read from JWT. Partner redemption and trial notify are server-side; products consume `/v1/entitlements` and local License verify for offline private deployments.
 
+Gauge quotas (resource counts / bytes) use `client.allocate({ resourceId, amount })` and `client.release({ resourceId })`. Counter quotas (API / monthly / voice) keep `client.consume()`. Do not send `subjectId` in the JSON body; the client always binds the subject via the verified token or `X-Act-As-Subject`.
+
 ## Module format (Nest backends)
 
 Source TypeScript uses **ES `import` / `export`**. The published `dist/` is compiled to **CommonJS** (`require` / `module.exports`) because NestJS product backends still load this package via CommonJS.
