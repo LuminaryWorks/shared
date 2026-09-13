@@ -9,7 +9,7 @@ export interface ReauthOverlayProps {
   logoSrc?: string;
   labels?: HeadlessLoginLabels;
   returnUrl?: string;
-  /** Brand accent forwarded to HeadlessLoginPanel (default `#3a84ff`). */
+  /** Brand accent forwarded to HeadlessLoginPanel (default `#1677ff`). */
   themeColor?: string;
   /** Exchange OIDC token / persist product session, then AuthGate completes. */
   onOidcSession: (session: LuminaryAuthSession, returnUrl?: string) => Promise<void> | void;

@@ -71,13 +71,13 @@ export interface HeadlessLoginPanelProps {
   style?: CSSProperties;
   /**
    * Brand accent for primary CTA / focus / product label.
-   * Defaults to `#3a84ff` (DataLuminary / BlockyEdu).
+   * Defaults to ecosystem primary `#1677ff`.
    */
   themeColor?: string;
 }
 
-/** Shared default accent for product login panels. */
-export const DEFAULT_LOGIN_THEME_COLOR = "#3a84ff";
+/** Shared default accent for product login panels (shared/brand --lw-primary). */
+export const DEFAULT_LOGIN_THEME_COLOR = "#1677ff";
 
 const defaults: Required<HeadlessLoginLabels> = {
   title: "Sign in",
