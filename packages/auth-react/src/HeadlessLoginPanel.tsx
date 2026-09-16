@@ -39,6 +39,8 @@ export interface HeadlessLoginLabels {
   /** Switch link when on register: "Already have an account? Sign in" */
   loginLink?: string;
   passwordMismatch?: string;
+  registerTitle?: string;
+  registerSubtitle?: string;
 }
 
 export interface HeadlessLoginPanelProps {
@@ -118,6 +120,8 @@ const defaults: Required<HeadlessLoginLabels> = {
   registerLink: "Create an account",
   loginLink: "Already have an account? Sign in",
   passwordMismatch: "Passwords do not match",
+  registerTitle: "Create account",
+  registerSubtitle: "Create your LuminaryWorks unified account",
 };
 
 function resolveSieBase(config: Partial<LuminaryIdpConfig>): string | undefined {
@@ -319,6 +323,33 @@ export function HeadlessLoginPanel({
       if (!apiBase) {
         throw new Error(labels.experienceUnavailable);
       }
+      if (isRegister) {
+        if (
+          !registerEnabled ||
+          !experienceAdapter.experiencePasswordSignUp
+        ) {
+          throw new Error(labels.experienceUnavailable);
+        }
+        if (password !== confirmPassword) {
+          throw new Error(labels.passwordMismatch);
+        }
+        const result = await experienceAdapter.experiencePasswordSignUp({
+          apiBase,
+          identifier: identifier.trim(),
+          password,
+          issuer: config.issuer,
+          clientId: config.clientId,
+          redirectUri: config.redirectUri,
+          audience: config.audience,
+          scopes: config.scopes,
+          returnUrl,
+        });
+        if (result.redirectTo) {
+          followExperienceRedirect(result.redirectTo);
+          return;
+        }
+        throw new Error("Experience API did not return redirectTo");
+      }
       if (
         !passwordEnabled ||
         !experienceAdapter.capabilities.includes(
@@ -352,9 +383,26 @@ export function HeadlessLoginPanel({
     }
   };
 
+  const switchPanelMode = (next: "sign-in" | "register") => {
+    setPanelMode(next);
+    setError("");
+    setConfirmPassword("");
+  };
+
   const busy = loading !== null;
   const showSocial = socialEnabled && connectors.length > 0;
-  const showHint = Boolean(labelsProp?.hint) || showSocial;
+  const showHint = Boolean(labelsProp?.hint) || showSocial || isRegister;
+  const formReady =
+    Boolean(identifier.trim()) &&
+    Boolean(password) &&
+    (!isRegister || Boolean(confirmPassword));
+  const titleText = isRegister ? labels.registerTitle : labels.title;
+  const subtitleText = isRegister ? labels.registerSubtitle : labels.subtitle;
+  const identifierPlaceholder = isRegister
+    ? labels.registerIdentifierPlaceholder
+    : labels.identifierPlaceholder;
+  const submitLabel = isRegister ? labels.submitRegister : labels.submitPassword;
+  const hintText = isRegister ? labels.registerHint : labels.hint;
 
   return (
     <div className={cx(styles.panel, className)} style={panelStyle}>
@@ -362,10 +410,10 @@ export function HeadlessLoginPanel({
         {logoSrc ? <img src={logoSrc} alt="" width={48} height={48} className={styles.logo} /> : null}
         <div>
           <p className={styles.product}>{productName}</p>
-          <h2 className={styles.title}>{labels.title}</h2>
+          <h2 className={styles.title}>{titleText}</h2>
         </div>
       </header>
-      <p className={styles.subtitle}>{labels.subtitle}</p>
+      <p className={styles.subtitle}>{subtitleText}</p>
 
       {configured ? (
         <>
@@ -374,8 +422,8 @@ export function HeadlessLoginPanel({
               <input
                 type="text"
                 name="identifier"
-                autoComplete="username"
-                placeholder={labels.identifierPlaceholder}
+                autoComplete={isRegister ? "username" : "username"}
+                placeholder={identifierPlaceholder}
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
                 className={styles.input}
@@ -385,7 +433,7 @@ export function HeadlessLoginPanel({
                 <input
                   type={passwordVisible ? "text" : "password"}
                   name="password"
-                  autoComplete="current-password"
+                  autoComplete={isRegister ? "new-password" : "current-password"}
                   placeholder={labels.passwordPlaceholder}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -403,8 +451,22 @@ export function HeadlessLoginPanel({
                   <PasswordVisibilityIcon visible={passwordVisible} />
                 </button>
               </div>
-              <button type="submit" className={styles.primaryBtn} disabled={busy || !identifier || !password}>
-                {loading === "password" ? "…" : labels.submitPassword}
+              {isRegister ? (
+                <div className={styles.passwordField}>
+                  <input
+                    type={passwordVisible ? "text" : "password"}
+                    name="confirmPassword"
+                    autoComplete="new-password"
+                    placeholder={labels.confirmPasswordPlaceholder}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className={cx(styles.input, styles.passwordInput)}
+                    disabled={busy}
+                  />
+                </div>
+              ) : null}
+              <button type="submit" className={styles.primaryBtn} disabled={busy || !formReady}>
+                {loading === "password" ? "…" : submitLabel}
               </button>
             </form>
           ) : (
@@ -419,7 +481,20 @@ export function HeadlessLoginPanel({
               </button>
             </div>
           )}
-          {showHint ? <p className={styles.hint}>{labels.hint}</p> : null}
+          {showHint ? <p className={styles.hint}>{hintText}</p> : null}
+
+          {registerEnabled && passwordEnabled ? (
+            <p className={styles.switchMode}>
+              <button
+                type="button"
+                className={styles.switchModeBtn}
+                disabled={busy}
+                onClick={() => switchPanelMode(isRegister ? "sign-in" : "register")}
+              >
+                {isRegister ? labels.loginLink : labels.registerLink}
+              </button>
+            </p>
+          ) : null}
 
           {showSocial ? (
             <div className={styles.divider} aria-hidden>

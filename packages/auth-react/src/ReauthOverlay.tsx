@@ -88,6 +88,7 @@ export function ReauthOverlay({
             }}
             returnUrl={resolvedReturnUrl}
             mode="popup"
+            showRegister={false}
             showCancel={dismissible}
             onCancel={handleCancel}
             onOidcSession={handleSession}

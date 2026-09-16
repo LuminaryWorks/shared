@@ -14,10 +14,13 @@ test("login factory defaults to Logto Headless and maps ZITADEL to hosted OIDC",
   assert.ok(logto instanceof LogtoExperienceAdapter);
   assert.equal(logto.provider, "logto");
   assert.ok(logto.capabilities.includes(LOGIN_EXPERIENCE_CAPABILITIES.passwordSignIn));
+  assert.ok(logto.capabilities.includes(LOGIN_EXPERIENCE_CAPABILITIES.passwordSignUp));
+  assert.equal(typeof logto.experiencePasswordSignUp, "function");
 
   const hosted = createLoginExperienceAdapter("hosted");
   assert.ok(hosted instanceof HostedOidcExperienceAdapter);
   assert.deepEqual(hosted.capabilities, []);
+  assert.equal(hosted.experiencePasswordSignUp, undefined);
 
   const zitadel = createLoginExperienceAdapter("zitadel");
   assert.ok(zitadel instanceof HostedOidcExperienceAdapter);
@@ -25,6 +28,14 @@ test("login factory defaults to Logto Headless and maps ZITADEL to hosted OIDC",
   assert.equal(zitadel.capabilities.length, 0);
   assert.equal(resolveLoginExperienceAdapter(null, "zitadel").provider, "zitadel");
   assert.throws(() => createLoginExperienceAdapter("casdoor"), /Unknown login experience provider/);
+});
+
+test("Logto register username helper rejects email-like identifiers", async () => {
+  const { isLogtoRegisterUsername } = await import("../dist/index.js");
+  assert.equal(isLogtoRegisterUsername("alice_01"), true);
+  assert.equal(isLogtoRegisterUsername("Alice"), true);
+  assert.equal(isLogtoRegisterUsername("alice@example.com"), false);
+  assert.equal(isLogtoRegisterUsername("1alice"), false);
 });
 
 test("readIdpConfigFromEnv carries IAM_PROVIDER for the login panel", () => {

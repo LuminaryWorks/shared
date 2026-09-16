@@ -239,6 +239,28 @@ $radius-sm: 4px;
   line-height: 1.45;
 }
 
+.switchMode {
+  margin: 12px 0 0;
+  text-align: center;
+}
+
+.switchModeBtn {
+  border: none;
+  background: transparent;
+  color: var(--lw-auth-theme);
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+  padding: 4px 8px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+
+  &:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+  }
+}
+
 .error {
   margin: 12px 0 0;
   font-size: 13px;
