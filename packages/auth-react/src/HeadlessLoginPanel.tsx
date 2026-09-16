@@ -17,18 +17,28 @@ export interface HeadlessLoginLabels {
   title?: string;
   subtitle?: string;
   identifierPlaceholder?: string;
+  /** Placeholder when panel is in register mode (username). */
+  registerIdentifierPlaceholder?: string;
   passwordPlaceholder?: string;
+  confirmPasswordPlaceholder?: string;
   submitPassword?: string;
+  submitRegister?: string;
   /** Hosted OIDC button shown when the adapter has no password capability. */
   submitSso?: string;
   submitGoogle?: string;
   submitGithub?: string;
   socialDivider?: string;
   hint?: string;
+  registerHint?: string;
   cancel?: string;
   experienceUnavailable?: string;
   showPassword?: string;
   hidePassword?: string;
+  /** Switch link when on sign-in: "Create an account" */
+  registerLink?: string;
+  /** Switch link when on register: "Already have an account? Sign in" */
+  loginLink?: string;
+  passwordMismatch?: string;
 }
 
 export interface HeadlessLoginPanelProps {
@@ -50,6 +60,12 @@ export interface HeadlessLoginPanelProps {
    * Equivalent to `socialProviders={[]}` when false.
    */
   showSocialConnectors?: boolean;
+  /**
+   * Show self-register switch + register form (username + password via Experience).
+   * Default `true` for end-user product logins. Set `false` for admin / ops consoles.
+   * Hosted OIDC adapters without passwordSignUp hide register automatically.
+   */
+  showRegister?: boolean;
   /**
    * Social providers (when `showSocialConnectors` is not `false`):
    * - omit / `"auto"` — load enabled connectors from IdP (google, github, x, …)
@@ -83,17 +99,25 @@ const defaults: Required<HeadlessLoginLabels> = {
   title: "Sign in",
   subtitle: "Use your LuminaryWorks unified account",
   identifierPlaceholder: "Email or username",
+  registerIdentifierPlaceholder: "Username",
   passwordPlaceholder: "Password",
+  confirmPasswordPlaceholder: "Confirm password",
   submitPassword: "Sign in with password",
+  submitRegister: "Create account",
   submitSso: "Continue with unified account",
   submitGoogle: "Google",
   submitGithub: "GitHub",
   socialDivider: "or",
   hint: "Social providers open directly. Password uses your LuminaryWorks account.",
+  registerHint:
+    "Create a username (start with a letter or _). Prefer email? Use a social provider below.",
   cancel: "Cancel",
   experienceUnavailable: "Password sign-in is unavailable; use a social provider instead.",
   showPassword: "Show password",
   hidePassword: "Hide password",
+  registerLink: "Create an account",
+  loginLink: "Already have an account? Sign in",
+  passwordMismatch: "Passwords do not match",
 };
 
 function resolveSieBase(config: Partial<LuminaryIdpConfig>): string | undefined {
@@ -130,6 +154,7 @@ export function HeadlessLoginPanel({
   returnUrl,
   mode = "popup",
   showSocialConnectors = true,
+  showRegister = true,
   socialProviders = "auto",
   showCancel,
   onCancel,
@@ -146,8 +171,10 @@ export function HeadlessLoginPanel({
   );
   const labels = { ...defaults, ...labelsProp };
   const configured = isIdpConfigured(config);
+  const [panelMode, setPanelMode] = useState<"sign-in" | "register">("sign-in");
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordVisible, setPasswordVisible] = useState(false);
   const panelStyle: CSSProperties = {
     ...style,
@@ -166,6 +193,11 @@ export function HeadlessLoginPanel({
   const passwordEnabled =
     experienceAdapter.capabilities.includes(LOGIN_EXPERIENCE_CAPABILITIES.passwordSignIn) &&
     typeof experienceAdapter.experiencePasswordSignIn === "function";
+  const registerEnabled =
+    showRegister !== false &&
+    experienceAdapter.capabilities.includes(LOGIN_EXPERIENCE_CAPABILITIES.passwordSignUp) &&
+    typeof experienceAdapter.experiencePasswordSignUp === "function";
+  const isRegister = panelMode === "register" && registerEnabled;
 
   // Browser back from IdP restores bfcache with loading still set → "…".
   useEffect(() => {

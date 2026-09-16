@@ -9,6 +9,8 @@ import { LogtoExperienceAdapter } from "./logto-experience-adapter";
  */
 export const LOGIN_EXPERIENCE_CAPABILITIES = {
   passwordSignIn: "password-sign-in",
+  /** Username + password self-register via Experience (Logto NewPasswordIdentity). */
+  passwordSignUp: "password-sign-up",
   socialConnectors: "social-connectors",
   socialDirectSignIn: "social-direct-sign-in",
 } as const;
@@ -40,6 +42,11 @@ export interface ExperiencePasswordSignInResult {
   raw?: unknown;
 }
 
+/** Same OIDC bootstrap fields as sign-in; username must match Logto username rules. */
+export type ExperiencePasswordSignUpInput = ExperiencePasswordSignInInput;
+
+export type ExperiencePasswordSignUpResult = ExperiencePasswordSignInResult;
+
 export interface ExperienceSocialConnector {
   id: string;
   target: string;
@@ -70,6 +77,13 @@ export interface LoginExperienceAdapter {
   experiencePasswordSignIn?(
     input: ExperiencePasswordSignInInput,
   ): Promise<ExperiencePasswordSignInResult>;
+  /**
+   * Self-register with username + password (Logto Register + NewPasswordIdentity).
+   * Email/phone sign-up needs verification codes — not covered by this method.
+   */
+  experiencePasswordSignUp?(
+    input: ExperiencePasswordSignUpInput,
+  ): Promise<ExperiencePasswordSignUpResult>;
   fetchSocialConnectors?(
     input: FetchSocialConnectorsInput,
   ): Promise<ExperienceSocialConnector[]>;

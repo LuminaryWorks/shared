@@ -10,6 +10,8 @@ import {
   type ExperienceIdentifierType,
   type ExperiencePasswordSignInInput,
   type ExperiencePasswordSignInResult,
+  type ExperiencePasswordSignUpInput,
+  type ExperiencePasswordSignUpResult,
   type ExperienceSocialConnector,
   type FetchSocialConnectorsInput,
   type LoginExperienceAdapter,
@@ -17,6 +19,13 @@ import {
   type SocialSignInRequest,
 } from "./login-experience-adapter";
 import type { LuminaryIdpConfig } from "./types";
+
+/** Logto username pattern for NewPasswordIdentity (see Experience API docs). */
+const LOGTO_USERNAME_RE = /^[A-Za-z_]\w*$/;
+
+export function isLogtoRegisterUsername(value: string): boolean {
+  return LOGTO_USERNAME_RE.test(value.trim());
+}
 
 function experienceUrl(apiBase: string, path: string): string {
   return `${apiBase.replace(/\/$/, "")}/api/experience${path}`;
@@ -122,6 +131,7 @@ export class LogtoExperienceAdapter implements LoginExperienceAdapter {
   readonly provider = "logto";
   readonly capabilities: readonly LoginExperienceCapability[] = [
     LOGIN_EXPERIENCE_CAPABILITIES.passwordSignIn,
+    LOGIN_EXPERIENCE_CAPABILITIES.passwordSignUp,
     LOGIN_EXPERIENCE_CAPABILITIES.socialConnectors,
     LOGIN_EXPERIENCE_CAPABILITIES.socialDirectSignIn,
   ];
@@ -185,6 +195,61 @@ export class LogtoExperienceAdapter implements LoginExperienceAdapter {
       }
     }
     throw lastError ?? new Error("Experience password sign-in failed");
+  }
+
+  /**
+   * Register with username + password via NewPasswordIdentity.
+   * Email/phone self-register requires verification codes — use social or invite instead.
+   */
+  async experiencePasswordSignUp(
+    input: ExperiencePasswordSignUpInput,
+  ): Promise<ExperiencePasswordSignUpResult> {
+    const { apiBase, identifier, password } = input;
+    const username = identifier.trim();
+    if (!isLogtoRegisterUsername(username)) {
+      throw new Error(
+        "Register with a username (letters, digits, underscore; start with a letter or _). Use social login for email-based accounts.",
+      );
+    }
+    if (!password || password.length < 8) {
+      throw new Error("Password must be at least 8 characters");
+    }
+
+    await bootstrapOidcInteraction(input);
+
+    await experienceFetch(apiBase, "", {
+      method: "PUT",
+      body: JSON.stringify({ interactionEvent: "Register" }),
+    });
+
+    const verified = await experienceFetch<{ verificationId?: string }>(
+      apiBase,
+      "/verification/new-password-identity",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          identifier: { type: "username", value: username },
+          password,
+        }),
+      },
+    );
+
+    const verificationId = verified?.verificationId;
+    if (!verificationId) {
+      throw new Error("Experience API did not return verificationId");
+    }
+
+    await experienceFetch(apiBase, "/identification", {
+      method: "POST",
+      body: JSON.stringify({ verificationId }),
+    });
+
+    const submitted = await experienceFetch<{ redirectTo?: string }>(apiBase, "/submit", {
+      method: "POST",
+      body: JSON.stringify({}),
+    });
+
+    return { redirectTo: submitted?.redirectTo, raw: submitted };
   }
 
   async fetchSocialConnectors(
