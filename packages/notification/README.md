@@ -23,6 +23,22 @@ pnpm add @luminaryworks/notification
 "@luminaryworks/notification": "file:../../LuminaryWorks/shared/packages/notification"
 ```
 
+群机器人（不依赖 Nest，产品自行读环境变量）：
+
+```typescript
+import { sendImWebhook } from "@luminaryworks/notification";
+
+await sendImWebhook({
+  channel: "feishu", // wecom | dingtalk | feishu
+  webhookUrl: process.env.NOTIFY_FEISHU_WEBHOOK_URL!,
+  title: "BlockyEdu",
+  text: "催学：课程已逾期",
+  secret: process.env.NOTIFY_DINGTALK_SECRET,
+});
+```
+
+密钥只放环境变量，不要写入仓库。Slack / Teams / SMS 仍未实现。
+
 ```bash
 cd LuminaryWorks/shared && pnpm install && pnpm --dir packages/notification build
 ```

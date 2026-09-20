@@ -145,6 +145,13 @@ for (const rel of PACKAGES) {
   let version = pj.version;
   const remote = npmViewVersion(name);
 
+  // 首版必须本机 npm publish 并绑定 Trusted Publisher，不能让缺 OIDC 的新包把整次发布打失败。
+  if (!remote) {
+    console.log(`skip ${name}@${version} (not on npmjs yet; first publish is local)`);
+    skipped += 1;
+    continue;
+  }
+
   if (remote === version) {
     const shouldBump = AUTO_BUMP && (FORCE_ALL || hasUnpublishedSource(rel));
     if (!shouldBump) {

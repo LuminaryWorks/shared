@@ -17,3 +17,12 @@ export { NotificationModule } from "./notification.module";
 export { NotificationService } from "./notification.service";
 export { EmailChannel } from "./email/email.channel";
 export { buildMailerOptions } from "./email/mailer-options";
+export {
+  buildImWebhookRequest,
+  imBodyOk,
+  redactImWebhookUrl,
+  sendImWebhook,
+  type ImChannel,
+  type ImWebhookMessage,
+  type ImWebhookResult,
+} from "./im/im-webhook";
