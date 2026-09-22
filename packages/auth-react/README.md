@@ -43,6 +43,16 @@ Override layout via `className` / `style` on the root.
   // socialProviders: "auto" | ["google","github"] | []
 />
 
+// Desktop / mobile native shell — Google/GitHub in the system browser (RFC 8252)
+<HeadlessLoginPanel
+  config={idpConfig}
+  productName="VistaRemote"
+  mode="external"
+  openExternalUrl={(url) => window.nativeShell.openExternal(url)}
+  // Password Headless stays in-app; social/SSO open the OS browser.
+  // Register redirect_uri as http://127.0.0.1:<port>/auth/callback or app://…
+/>
+
 // Admin / internal console — hide Experience social connectors
 <HeadlessLoginPanel
   config={idpConfig}
@@ -54,10 +64,14 @@ Override layout via `className` / `style` on the root.
 
 | Prop | Default | Notes |
 |------|---------|--------|
+| `mode` | `"popup"` | `"redirect"` SPA full-page; `"external"` system browser for social/SSO (needs `openExternalUrl`) |
+| `openExternalUrl` | — | Required for `mode="external"`. Electron: `shell.openExternal`; RN: Custom Tabs / ASWebAuthenticationSession |
 | `showSocialConnectors` | `true` | `false` skips fetch and hides divider + social buttons |
 | `socialProviders` | `"auto"` | allowlist, or `[]` (same effect as `showSocialConnectors={false}`) |
 | `experienceAdapter` | catalog default | optional custom `LoginExperienceAdapter`; otherwise `config.iamProvider` |
 | `config.iamProvider` | `logto` | `logto` Headless; `oidc` / `zitadel` Hosted Redirect |
+
+**Desktop callback:** Logto redirects the *system browser* to your loopback `redirect_uri`. The native shell must detect that request, focus the app window onto the same URL (so PKCE `localStorage` matches), and show Chrome a “you can close this tab” page. See VistaRemote Electron `serve-renderer-static` + Viewer preload.
 
 IdP hosted `/sign-in` social row layout: `node scripts/apply-branding.mjs` (customCss wrap). Enable connectors: `ensure-sign-in-experience.mjs` + `verify-social-direct-signin.mjs`.
 

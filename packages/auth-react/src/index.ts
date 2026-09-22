@@ -10,3 +10,4 @@ export * from "./AuthGateProvider";
 export * from "./HeadlessLoginPanel";
 export * from "./ReauthOverlay";
 export * from "./post-login-path";
+export * from "./register-policy";

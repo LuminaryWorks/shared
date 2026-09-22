@@ -6,7 +6,16 @@ import {
   type LoginExperienceAdapter,
   type SocialSignInRequest,
 } from "./login-experience-adapter";
-import { signInPopup, signInRedirect } from "./oidc-client";
+import { LogtoExperienceAdapter } from "./logto-experience-adapter";
+import { signInPopup, signInRedirect, prepareSignInRequestUrl } from "./oidc-client";
+import {
+  evaluateRegisterEmail,
+  fetchRegisterEmailPolicy,
+  registerEmailDomainsHint,
+  registerEmailRejectionMessage,
+  resolveRegisterEmailPolicy,
+  type RegisterEmailPolicy,
+} from "./register-policy";
 import { isIdpConfigured, type LuminaryAuthSession, type LuminaryIdpConfig } from "./types";
 import styles from "./HeadlessLoginPanel.module.scss";
 
@@ -41,6 +50,23 @@ export interface HeadlessLoginLabels {
   passwordMismatch?: string;
   registerTitle?: string;
   registerSubtitle?: string;
+  registerWithEmail?: string;
+  registerWithUsername?: string;
+  emailPlaceholder?: string;
+  verificationCodePlaceholder?: string;
+  sendCode?: string;
+  resendCode?: string;
+  /** Prefix before the allowlisted domain list, e.g. "Allowed email domains". */
+  allowedDomainsPrefix?: string;
+  /** Shown when mode is off / unrestricted (aside from disposable blocklist). */
+  allowedDomainsOpen?: string;
+  /** Shown when only disposable domains are blocked. */
+  allowedDomainsBlocklist?: string;
+  /**
+   * Desktop/mobile system-browser social login: tell the user to finish in the browser
+   * and return to the app (loopback / deep link callback).
+   */
+  waitingExternalBrowser?: string;
 }
 
 export interface HeadlessLoginPanelProps {
@@ -52,8 +78,13 @@ export interface HeadlessLoginPanelProps {
   logoSrc?: string;
   labels?: HeadlessLoginLabels;
   returnUrl?: string;
-  /** Prefer popup (default) for reauth; use redirect for full-page login. */
-  mode?: "popup" | "redirect";
+  /** Prefer popup (default) for reauth; redirect for full-page SPA; external for desktop/mobile system browser (RFC 8252). */
+  mode?: "popup" | "redirect" | "external";
+  /**
+   * Open an authorize URL in the OS browser / Custom Tabs / ASWebAuthenticationSession.
+   * Required when `mode="external"` (Google / GitHub / hosted SSO). Password Headless stays in-app.
+   */
+  openExternalUrl?: (url: string) => void | Promise<void>;
   /**
    * Show Experience social connectors (Google / GitHub / …).
    * Default `true`. Set `false` for admin / internal consoles that only allow
@@ -63,11 +94,26 @@ export interface HeadlessLoginPanelProps {
    */
   showSocialConnectors?: boolean;
   /**
-   * Show self-register switch + register form (username + password via Experience).
+   * Show self-register switch + register form.
    * Default `true` for end-user product logins. Set `false` for admin / ops consoles.
-   * Hosted OIDC adapters without passwordSignUp hide register automatically.
    */
   showRegister?: boolean;
+  /**
+   * Email domain policy for self-register.
+   * If omitted, the panel loads `GET {experienceApiBase}/api/register-policy` when available,
+   * otherwise uses built-in consumer allowlist defaults.
+   */
+  registerEmailPolicy?: RegisterEmailPolicy;
+  /**
+   * When true (default), fetch live policy from Auth Gateway `/api/register-policy`.
+   * Set false to use only `registerEmailPolicy` / built-in defaults (e.g. local auth-dev-proxy).
+   */
+  fetchRegisterPolicy?: boolean;
+  /**
+   * Optional CAPTCHA token provider (Cloudflare Turnstile / reCAPTCHA).
+   * Token is sent as `captchaToken` on Experience Register init when Logto bot protection is on.
+   */
+  getCaptchaToken?: () => Promise<string | undefined>;
   /**
    * Social providers (when `showSocialConnectors` is not `false`):
    * - omit / `"auto"` — load enabled connectors from IdP (google, github, x, …)
@@ -112,7 +158,7 @@ const defaults: Required<HeadlessLoginLabels> = {
   socialDivider: "or",
   hint: "Social providers open directly. Password uses your LuminaryWorks account.",
   registerHint:
-    "Create a username (start with a letter or _). Prefer email? Use a social provider below.",
+    "Email register needs a code (Gmail / Outlook / QQ / 163 / iCloud …). Username is an alternative. Prefer one-click? Use a social provider.",
   cancel: "Cancel",
   experienceUnavailable: "Password sign-in is unavailable; use a social provider instead.",
   showPassword: "Show password",
@@ -122,6 +168,18 @@ const defaults: Required<HeadlessLoginLabels> = {
   passwordMismatch: "Passwords do not match",
   registerTitle: "Create account",
   registerSubtitle: "Create your LuminaryWorks unified account",
+  registerWithEmail: "Email",
+  registerWithUsername: "Username",
+  emailPlaceholder: "Email",
+  verificationCodePlaceholder: "Verification code",
+  sendCode: "Send code",
+  resendCode: "Resend code",
+  allowedDomainsPrefix: "Allowed email domains",
+  allowedDomainsOpen: "Email registration is open for most providers.",
+  allowedDomainsBlocklist:
+    "Most email providers are accepted. Temporary / disposable addresses are blocked.",
+  waitingExternalBrowser:
+    "Finish signing in with your browser, then return to this app.",
 };
 
 function resolveSieBase(config: Partial<LuminaryIdpConfig>): string | undefined {
@@ -157,8 +215,12 @@ export function HeadlessLoginPanel({
   labels: labelsProp,
   returnUrl,
   mode = "popup",
+  openExternalUrl,
   showSocialConnectors = true,
   showRegister = true,
+  registerEmailPolicy: registerEmailPolicyProp,
+  fetchRegisterPolicy = true,
+  getCaptchaToken,
   socialProviders = "auto",
   showCancel,
   onCancel,
@@ -173,12 +235,50 @@ export function HeadlessLoginPanel({
     experienceAdapterProp,
     config.iamProvider,
   );
+  const [emailPolicy, setEmailPolicy] = useState<RegisterEmailPolicy>(
+    () => registerEmailPolicyProp ?? resolveRegisterEmailPolicy(),
+  );
+  useEffect(() => {
+    if (registerEmailPolicyProp) {
+      setEmailPolicy(registerEmailPolicyProp);
+      return;
+    }
+    if (!fetchRegisterPolicy || !showRegister) {
+      setEmailPolicy(resolveRegisterEmailPolicy());
+      return;
+    }
+    const base = config.experienceApiBase?.trim();
+    if (!base) {
+      setEmailPolicy(resolveRegisterEmailPolicy());
+      return;
+    }
+    let cancelled = false;
+    void fetchRegisterEmailPolicy(base).then((policy) => {
+      if (!cancelled) setEmailPolicy(policy);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    config.experienceApiBase,
+    fetchRegisterPolicy,
+    registerEmailPolicyProp,
+    showRegister,
+  ]);
+  useEffect(() => {
+    if (experienceAdapter instanceof LogtoExperienceAdapter) {
+      experienceAdapter.emailPolicy = emailPolicy;
+    }
+  }, [emailPolicy, experienceAdapter]);
   const labels = { ...defaults, ...labelsProp };
   const configured = isIdpConfigured(config);
   const [panelMode, setPanelMode] = useState<"sign-in" | "register">("sign-in");
+  const [registerChannel, setRegisterChannel] = useState<"email" | "username">("email");
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [verificationCode, setVerificationCode] = useState("");
+  const [emailVerificationId, setEmailVerificationId] = useState<string | null>(null);
   const [passwordVisible, setPasswordVisible] = useState(false);
   const panelStyle: CSSProperties = {
     ...style,
@@ -186,6 +286,7 @@ export function HeadlessLoginPanel({
   };
   const [loading, setLoading] = useState<"password" | string | null>(null);
   const [error, setError] = useState("");
+  const [awaitingExternal, setAwaitingExternal] = useState(false);
   const [connectors, setConnectors] = useState<ExperienceSocialConnector[]>([]);
   const socialEnabled =
     showSocialConnectors !== false &&
@@ -199,13 +300,27 @@ export function HeadlessLoginPanel({
     typeof experienceAdapter.experiencePasswordSignIn === "function";
   const registerEnabled =
     showRegister !== false &&
+    ((experienceAdapter.capabilities.includes(LOGIN_EXPERIENCE_CAPABILITIES.passwordSignUp) &&
+      typeof experienceAdapter.experiencePasswordSignUp === "function") ||
+      (experienceAdapter.capabilities.includes(LOGIN_EXPERIENCE_CAPABILITIES.emailCodeSignUp) &&
+        typeof experienceAdapter.sendRegisterEmailCode === "function" &&
+        typeof experienceAdapter.experienceEmailPasswordSignUp === "function"));
+  const emailRegisterEnabled =
+    experienceAdapter.capabilities.includes(LOGIN_EXPERIENCE_CAPABILITIES.emailCodeSignUp) &&
+    typeof experienceAdapter.sendRegisterEmailCode === "function" &&
+    typeof experienceAdapter.experienceEmailPasswordSignUp === "function";
+  const usernameRegisterEnabled =
     experienceAdapter.capabilities.includes(LOGIN_EXPERIENCE_CAPABILITIES.passwordSignUp) &&
     typeof experienceAdapter.experiencePasswordSignUp === "function";
   const isRegister = panelMode === "register" && registerEnabled;
+  const useEmailRegister = isRegister && registerChannel === "email" && emailRegisterEnabled;
 
   // Browser back from IdP restores bfcache with loading still set → "…".
   useEffect(() => {
-    const resetBusy = () => setLoading(null);
+    const resetBusy = () => {
+      setLoading(null);
+      setAwaitingExternal(false);
+    };
     window.addEventListener("pageshow", resetBusy);
     window.addEventListener("popstate", resetBusy);
     return () => {
@@ -263,6 +378,19 @@ export function HeadlessLoginPanel({
 
   const runOidc = async (experienceRequest?: SocialSignInRequest) => {
     if (!configured) throw new Error("IdP not configured");
+    if (mode === "external") {
+      if (!openExternalUrl) {
+        throw new Error("openExternalUrl is required when mode is \"external\"");
+      }
+      const url = await prepareSignInRequestUrl(config as LuminaryIdpConfig, {
+        returnUrl,
+        ...experienceRequest,
+      });
+      setAwaitingExternal(true);
+      await openExternalUrl(url);
+      setLoading(null);
+      return;
+    }
     if (mode === "redirect") {
       await signInRedirect(config, { returnUrl, ...experienceRequest });
       return;
@@ -291,6 +419,7 @@ export function HeadlessLoginPanel({
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
       setLoading(null);
+      setAwaitingExternal(false);
     }
   };
 
@@ -302,6 +431,7 @@ export function HeadlessLoginPanel({
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
       setLoading(null);
+      setAwaitingExternal(false);
     }
   };
 
@@ -323,20 +453,46 @@ export function HeadlessLoginPanel({
       if (!apiBase) {
         throw new Error(labels.experienceUnavailable);
       }
+      const captchaToken = getCaptchaToken ? await getCaptchaToken() : undefined;
       if (isRegister) {
-        if (
-          !registerEnabled ||
-          !experienceAdapter.experiencePasswordSignUp
-        ) {
-          throw new Error(labels.experienceUnavailable);
-        }
         if (password !== confirmPassword) {
           throw new Error(labels.passwordMismatch);
+        }
+        if (useEmailRegister) {
+          if (!experienceAdapter.experienceEmailPasswordSignUp || !emailVerificationId) {
+            throw new Error("Send and enter the email verification code first");
+          }
+          const decision = evaluateRegisterEmail(identifier.trim(), emailPolicy);
+          if (!decision.ok) throw new Error(registerEmailRejectionMessage(decision));
+          const result = await experienceAdapter.experienceEmailPasswordSignUp({
+            apiBase,
+            identifier: identifier.trim(),
+            email: identifier.trim(),
+            password,
+            code: verificationCode,
+            verificationId: emailVerificationId,
+            captchaToken,
+            issuer: config.issuer,
+            clientId: config.clientId,
+            redirectUri: config.redirectUri,
+            audience: config.audience,
+            scopes: config.scopes,
+            returnUrl,
+          });
+          if (result.redirectTo) {
+            followExperienceRedirect(result.redirectTo);
+            return;
+          }
+          throw new Error("Experience API did not return redirectTo");
+        }
+        if (!usernameRegisterEnabled || !experienceAdapter.experiencePasswordSignUp) {
+          throw new Error(labels.experienceUnavailable);
         }
         const result = await experienceAdapter.experiencePasswordSignUp({
           apiBase,
           identifier: identifier.trim(),
           password,
+          captchaToken,
           issuer: config.issuer,
           clientId: config.clientId,
           redirectUri: config.redirectUri,
@@ -371,8 +527,6 @@ export function HeadlessLoginPanel({
         returnUrl,
       });
       if (result.redirectTo) {
-        // Completes the PKCE interaction from bootstrap — do NOT start a new
-        // authorize (that re-opens Logto hosted /sign-in).
         followExperienceRedirect(result.redirectTo);
         return;
       }
@@ -383,10 +537,45 @@ export function HeadlessLoginPanel({
     }
   };
 
+  const runSendCode = async () => {
+    if (!configured || !useEmailRegister) return;
+    setError("");
+    setLoading("send-code");
+    try {
+      const apiBase = config.experienceApiBase?.trim();
+      if (!apiBase || !experienceAdapter.sendRegisterEmailCode) {
+        throw new Error(labels.experienceUnavailable);
+      }
+      const email = identifier.trim();
+      const decision = evaluateRegisterEmail(email, emailPolicy);
+      if (!decision.ok) throw new Error(registerEmailRejectionMessage(decision));
+      const captchaToken = getCaptchaToken ? await getCaptchaToken() : undefined;
+      const sent = await experienceAdapter.sendRegisterEmailCode({
+        apiBase,
+        identifier: email,
+        email,
+        captchaToken,
+        issuer: config.issuer,
+        clientId: config.clientId,
+        redirectUri: config.redirectUri,
+        audience: config.audience,
+        scopes: config.scopes,
+        returnUrl,
+      });
+      setEmailVerificationId(sent.verificationId);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setLoading(null);
+    }
+  };
+
   const switchPanelMode = (next: "sign-in" | "register") => {
     setPanelMode(next);
     setError("");
     setConfirmPassword("");
+    setVerificationCode("");
+    setEmailVerificationId(null);
   };
 
   const busy = loading !== null;
@@ -395,14 +584,25 @@ export function HeadlessLoginPanel({
   const formReady =
     Boolean(identifier.trim()) &&
     Boolean(password) &&
-    (!isRegister || Boolean(confirmPassword));
+    (!isRegister || Boolean(confirmPassword)) &&
+    (!useEmailRegister || (Boolean(verificationCode.trim()) && Boolean(emailVerificationId)));
   const titleText = isRegister ? labels.registerTitle : labels.title;
   const subtitleText = isRegister ? labels.registerSubtitle : labels.subtitle;
   const identifierPlaceholder = isRegister
-    ? labels.registerIdentifierPlaceholder
+    ? useEmailRegister
+      ? labels.emailPlaceholder
+      : labels.registerIdentifierPlaceholder
     : labels.identifierPlaceholder;
   const submitLabel = isRegister ? labels.submitRegister : labels.submitPassword;
   const hintText = isRegister ? labels.registerHint : labels.hint;
+  const domainsHint =
+    useEmailRegister
+      ? registerEmailDomainsHint(emailPolicy, {
+          allowedDomainsPrefix: labels.allowedDomainsPrefix,
+          allowedDomainsOpen: labels.allowedDomainsOpen,
+          allowedDomainsBlocklist: labels.allowedDomainsBlocklist,
+        })
+      : null;
 
   return (
     <div className={cx(styles.panel, className)} style={panelStyle}>
@@ -419,16 +619,93 @@ export function HeadlessLoginPanel({
         <>
           {passwordEnabled ? (
             <form onSubmit={(e) => void runPassword(e)} className={styles.form}>
+              {isRegister && emailRegisterEnabled && usernameRegisterEnabled ? (
+                <div className={styles.channelTabs} role="tablist" aria-label="Register method">
+                  <button
+                    type="button"
+                    role="tab"
+                    className={cx(
+                      styles.channelTab,
+                      registerChannel === "email" && styles.channelTabActive,
+                    )}
+                    aria-selected={registerChannel === "email"}
+                    disabled={busy}
+                    onClick={() => {
+                      setRegisterChannel("email");
+                      setEmailVerificationId(null);
+                      setVerificationCode("");
+                      setError("");
+                    }}
+                  >
+                    {labels.registerWithEmail}
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    className={cx(
+                      styles.channelTab,
+                      registerChannel === "username" && styles.channelTabActive,
+                    )}
+                    aria-selected={registerChannel === "username"}
+                    disabled={busy}
+                    onClick={() => {
+                      setRegisterChannel("username");
+                      setEmailVerificationId(null);
+                      setVerificationCode("");
+                      setError("");
+                    }}
+                  >
+                    {labels.registerWithUsername}
+                  </button>
+                </div>
+              ) : null}
               <input
-                type="text"
+                type={useEmailRegister ? "email" : "text"}
                 name="identifier"
                 autoComplete={isRegister ? "username" : "username"}
                 placeholder={identifierPlaceholder}
                 value={identifier}
-                onChange={(e) => setIdentifier(e.target.value)}
+                onChange={(e) => {
+                  setIdentifier(e.target.value);
+                  if (useEmailRegister) {
+                    setEmailVerificationId(null);
+                  }
+                }}
                 className={styles.input}
                 disabled={busy}
               />
+              {domainsHint ? (
+                <p className={styles.domainsHint} data-testid="register-allowed-domains">
+                  {domainsHint}
+                </p>
+              ) : null}
+              {useEmailRegister ? (
+                <div className={styles.codeRow}>
+                  <input
+                    type="text"
+                    name="verificationCode"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    placeholder={labels.verificationCodePlaceholder}
+                    value={verificationCode}
+                    onChange={(e) => setVerificationCode(e.target.value)}
+                    className={cx(styles.input, styles.codeInput)}
+                    disabled={busy}
+                  />
+                  <button
+                    type="button"
+                    className={styles.secondaryBtn}
+                    disabled={busy || !identifier.trim()}
+                    onClick={() => void runSendCode()}
+                  >
+                    {loading === "send-code"
+                      ? "…"
+                      : emailVerificationId
+                        ? labels.resendCode
+                        : labels.sendCode}
+                  </button>
+                </div>
+              ) : null}
               <div className={styles.passwordField}>
                 <input
                   type={passwordVisible ? "text" : "password"}
@@ -493,6 +770,12 @@ export function HeadlessLoginPanel({
               >
                 {isRegister ? labels.loginLink : labels.registerLink}
               </button>
+            </p>
+          ) : null}
+
+          {awaitingExternal ? (
+            <p className={styles.hint} role="status">
+              {labels.waitingExternalBrowser}
             </p>
           ) : null}
 

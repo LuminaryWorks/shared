@@ -11,6 +11,8 @@ export const LOGIN_EXPERIENCE_CAPABILITIES = {
   passwordSignIn: "password-sign-in",
   /** Username + password self-register via Experience (Logto NewPasswordIdentity). */
   passwordSignUp: "password-sign-up",
+  /** Email + verification code + password self-register. */
+  emailCodeSignUp: "email-code-sign-up",
   socialConnectors: "social-connectors",
   socialDirectSignIn: "social-direct-sign-in",
 } as const;
@@ -43,9 +45,46 @@ export interface ExperiencePasswordSignInResult {
 }
 
 /** Same OIDC bootstrap fields as sign-in; username must match Logto username rules. */
-export type ExperiencePasswordSignUpInput = ExperiencePasswordSignInInput;
+export type ExperiencePasswordSignUpInput = ExperiencePasswordSignInInput & {
+  /** Optional CAPTCHA token for Logto bot protection (Turnstile / reCAPTCHA). */
+  captchaToken?: string;
+};
 
 export type ExperiencePasswordSignUpResult = ExperiencePasswordSignInResult;
+
+export interface ExperienceEmailSignUpSendCodeInput {
+  apiBase: string;
+  email: string;
+  /** @deprecated alias of email */
+  identifier?: string;
+  captchaToken?: string;
+  issuer?: string;
+  clientId?: string;
+  redirectUri?: string;
+  audience?: string;
+  scopes?: string;
+  returnUrl?: string;
+}
+
+export interface ExperienceEmailSignUpSendCodeResult {
+  verificationId: string;
+}
+
+export interface ExperienceEmailSignUpCompleteInput {
+  apiBase: string;
+  email: string;
+  password: string;
+  code: string;
+  verificationId: string;
+  identifier?: string;
+  captchaToken?: string;
+  issuer?: string;
+  clientId?: string;
+  redirectUri?: string;
+  audience?: string;
+  scopes?: string;
+  returnUrl?: string;
+}
 
 export interface ExperienceSocialConnector {
   id: string;
@@ -83,6 +122,12 @@ export interface LoginExperienceAdapter {
    */
   experiencePasswordSignUp?(
     input: ExperiencePasswordSignUpInput,
+  ): Promise<ExperiencePasswordSignUpResult>;
+  sendRegisterEmailCode?(
+    input: ExperienceEmailSignUpSendCodeInput,
+  ): Promise<ExperienceEmailSignUpSendCodeResult>;
+  experienceEmailPasswordSignUp?(
+    input: ExperienceEmailSignUpCompleteInput,
   ): Promise<ExperiencePasswordSignUpResult>;
   fetchSocialConnectors?(
     input: FetchSocialConnectorsInput,

@@ -7,6 +7,9 @@
 import { prepareSignInRequestUrl } from "./oidc-client";
 import {
   LOGIN_EXPERIENCE_CAPABILITIES,
+  type ExperienceEmailSignUpCompleteInput,
+  type ExperienceEmailSignUpSendCodeInput,
+  type ExperienceEmailSignUpSendCodeResult,
   type ExperienceIdentifierType,
   type ExperiencePasswordSignInInput,
   type ExperiencePasswordSignInResult,
@@ -18,6 +21,12 @@ import {
   type LoginExperienceCapability,
   type SocialSignInRequest,
 } from "./login-experience-adapter";
+import {
+  evaluateRegisterEmail,
+  registerEmailRejectionMessage,
+  resolveRegisterEmailPolicy,
+  type RegisterEmailPolicy,
+} from "./register-policy";
 import type { LuminaryIdpConfig } from "./types";
 
 /** Logto username pattern for NewPasswordIdentity (see Experience API docs). */
@@ -132,9 +141,12 @@ export class LogtoExperienceAdapter implements LoginExperienceAdapter {
   readonly capabilities: readonly LoginExperienceCapability[] = [
     LOGIN_EXPERIENCE_CAPABILITIES.passwordSignIn,
     LOGIN_EXPERIENCE_CAPABILITIES.passwordSignUp,
+    LOGIN_EXPERIENCE_CAPABILITIES.emailCodeSignUp,
     LOGIN_EXPERIENCE_CAPABILITIES.socialConnectors,
     LOGIN_EXPERIENCE_CAPABILITIES.socialDirectSignIn,
   ];
+
+  emailPolicy: RegisterEmailPolicy = resolveRegisterEmailPolicy();
 
   async experiencePasswordSignIn(
     input: ExperiencePasswordSignInInput,
@@ -219,7 +231,10 @@ export class LogtoExperienceAdapter implements LoginExperienceAdapter {
 
     await experienceFetch(apiBase, "", {
       method: "PUT",
-      body: JSON.stringify({ interactionEvent: "Register" }),
+      body: JSON.stringify({
+        interactionEvent: "Register",
+        ...(input.captchaToken ? { captchaToken: input.captchaToken } : {}),
+      }),
     });
 
     const verified = await experienceFetch<{ verificationId?: string }>(
@@ -245,6 +260,119 @@ export class LogtoExperienceAdapter implements LoginExperienceAdapter {
     });
 
     const submitted = await experienceFetch<{ redirectTo?: string }>(apiBase, "/submit", {
+      method: "POST",
+      body: JSON.stringify({}),
+    });
+
+    return { redirectTo: submitted?.redirectTo, raw: submitted };
+  }
+
+  async sendRegisterEmailCode(
+    input: ExperienceEmailSignUpSendCodeInput,
+  ): Promise<ExperienceEmailSignUpSendCodeResult> {
+    const email = (input.email || input.identifier || "").trim().toLowerCase();
+    const decision = evaluateRegisterEmail(email, this.emailPolicy);
+    if (!decision.ok) {
+      throw new Error(registerEmailRejectionMessage(decision));
+    }
+
+    await bootstrapOidcInteraction({
+      apiBase: input.apiBase,
+      identifier: email,
+      password: "",
+      issuer: input.issuer,
+      clientId: input.clientId,
+      redirectUri: input.redirectUri,
+      audience: input.audience,
+      scopes: input.scopes,
+      returnUrl: input.returnUrl,
+    });
+
+    await experienceFetch(input.apiBase, "", {
+      method: "PUT",
+      body: JSON.stringify({
+        interactionEvent: "Register",
+        ...(input.captchaToken ? { captchaToken: input.captchaToken } : {}),
+      }),
+    });
+
+    const sent = await experienceFetch<{ verificationId?: string }>(
+      input.apiBase,
+      "/verification/verification-code",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          identifier: { type: "email", value: email },
+          interactionEvent: "Register",
+        }),
+      },
+    );
+
+    if (!sent?.verificationId) {
+      throw new Error("Experience API did not return verificationId for email code");
+    }
+    return { verificationId: sent.verificationId };
+  }
+
+  async experienceEmailPasswordSignUp(
+    input: ExperienceEmailSignUpCompleteInput,
+  ): Promise<ExperiencePasswordSignUpResult> {
+    const email = (input.email || input.identifier || "").trim().toLowerCase();
+    const decision = evaluateRegisterEmail(email, this.emailPolicy);
+    if (!decision.ok) {
+      throw new Error(registerEmailRejectionMessage(decision));
+    }
+    if (!input.password || input.password.length < 8) {
+      throw new Error("Password must be at least 8 characters");
+    }
+    if (!input.code?.trim() || !input.verificationId?.trim()) {
+      throw new Error("Email verification code is required");
+    }
+
+    // Continue the Register interaction created by sendRegisterEmailCode — do not PUT Register again.
+
+    const verified = await experienceFetch<{ verificationId?: string }>(
+      input.apiBase,
+      "/verification/verification-code/verify",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          identifier: { type: "email", value: email },
+          verificationId: input.verificationId,
+          code: input.code.trim(),
+        }),
+      },
+    );
+
+    const codeVerificationId = verified?.verificationId || input.verificationId;
+
+    try {
+      await experienceFetch(input.apiBase, "/identification", {
+        method: "POST",
+        body: JSON.stringify({ verificationId: codeVerificationId }),
+      });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      if (!/missing_profile/i.test(msg)) {
+        // Logto returns missing_profile when password is still required — continue.
+        // Other errors (already in use, etc.) must surface.
+        if (!/422|password|profile/i.test(msg)) {
+          throw error instanceof Error ? error : new Error(msg);
+        }
+      }
+    }
+
+    await experienceFetch(input.apiBase, "/profile", {
+      method: "POST",
+      body: JSON.stringify({ type: "password", value: input.password }),
+    });
+
+    await experienceFetch(input.apiBase, "/identification", {
+      method: "POST",
+      body: JSON.stringify({}),
+    });
+
+    const submitted = await experienceFetch<{ redirectTo?: string }>(input.apiBase, "/submit", {
       method: "POST",
       body: JSON.stringify({}),
     });
