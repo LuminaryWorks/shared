@@ -94,7 +94,7 @@ export class EntitlementClientModule {
   }
 
   static forRootAsync(opts: {
-    useFactory: (...args: unknown[]) => EntitlementClientOptions | Promise<EntitlementClientOptions>;
+    useFactory: (...args: any[]) => EntitlementClientOptions | Promise<EntitlementClientOptions>;
     inject?: unknown[];
     imports?: DynamicModule["imports"];
   }): DynamicModule {

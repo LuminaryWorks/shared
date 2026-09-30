@@ -1,2 +1,13 @@
 packages:
   - "packages/*"
+allowBuilds:
+  '@scarf/scarf': true
+  'mediasoup': true
+  'unrs-resolver': true
+  '@nestjs/core': true
+  '@parcel/watcher': true
+  core-js: true
+  esbuild: true
+minimumReleaseAgeExclude:
+  - '@nestjs/common@12.1.2'
+  - '@nestjs/core@12.1.2'

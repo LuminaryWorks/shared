@@ -4,8 +4,9 @@
     "outDir": "dist",
     "rootDir": "src",
     // Nest/Node consumers load this package via CommonJS; source stays ES import/export.
-    "module": "CommonJS",
-    "moduleResolution": "Node",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "types": ["node"],
     "declaration": true
   },
   "include": ["src/**/*"],

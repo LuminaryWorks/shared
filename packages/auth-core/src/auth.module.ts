@@ -8,7 +8,7 @@ export interface LuminaryAuthModuleAsyncOptions {
   imports?: Type<unknown>[] | DynamicModule[] | Promise<DynamicModule>[];
   inject?: unknown[];
   useFactory: (
-    ...args: unknown[]
+    ...args: any[]
   ) => LuminaryAuthModuleOptions | Promise<LuminaryAuthModuleOptions>;
   /** When true, register LuminaryJwtAuthGuard as APP_GUARD */
   globalGuard?: boolean;

@@ -73,7 +73,7 @@ For CI reports that want every problem at once, use `inspectControlManifest` (ne
 | `identity` | `central` \| `external_oidc` \| `local` | `local` is lab-only; rejected for `pilot`/`production` unless the profile is `air-gapped`. |
 | `entitlement` | `off` \| `shadow_read` \| `enforce` \| `offline_license` | `enforce` requires `services.entitlement.required = true`; `offline_license` must not hard-depend on the central service. |
 | `ai` | `off` \| `central` \| `local_byok` | `central` is **rejected** for `pilot`/`production` — see the AI gate below. |
-| `notification` | `none` \| `smtp` | SMTP credentials come from env or a secret store, never from the manifest. |
+| `notification` | `none` \| `smtp` \| `platform` | `none` disables auth email. `smtp` is customer SMTP. `platform` is the SaaS Resend/Brevo/SMTP chain. Credentials come from env or a secret store, never from the manifest. |
 
 ## Degradation matrix
 
