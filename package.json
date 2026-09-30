@@ -4,7 +4,6 @@
   "private": true,
   "license": "Polyform-Noncommercial-1.0.0",
   "description": "LuminaryWorks shared libraries — pnpm workspace for @luminaryworks/* packages",
-  "packageManager": "pnpm@9.15.0",
   "scripts": {
     "build": "pnpm -r --if-present run build",
     "check": "pnpm -r --if-present run check",
@@ -13,9 +12,10 @@
     "test": "pnpm -r --if-present run test"
   },
   "devDependencies": {
-    "typescript": "^5.7.0"
+    "typescript": "6.0.3"
   },
   "engines": {
-    "node": ">=24.0.0"
+    "node": ">=24.0.0",
+    "pnpm": ">=11"
   }
 }

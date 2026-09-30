@@ -137,6 +137,15 @@ $env:SMOKE_TO="you@example.com"
 pnpm --dir packages/notification smoke:smtp
 ```
 
+## Auth mail providers
+
+Product report SMTP stays on `NotificationService.sendEmail()`. Registration, sign-in MFA, and password-reset mail go through `sendWithChain()` (Resend, Brevo, SMTP). The host is `services/notification`; this package does not read `process.env`.
+
+- Idempotency key: `buildAuthMailIdempotencyKey({ to, type, code, link })`.
+- A successful send is replayed. A timeout is `unknown` and does not fail over.
+- Providers at 95% of `dailyQuota` or `monthlyQuota` are skipped (`QUOTA_SWITCH_RATIO`).
+- `assertPrivateMatchDomains()` rejects public inboxes such as `gmail.com`.
+
 ## Future channels
 
 `NotificationChannel` already reserves `slack` | `teams` | `webhook` | `sms`.  

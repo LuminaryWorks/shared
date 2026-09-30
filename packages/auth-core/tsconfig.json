@@ -1,6 +1,7 @@
 {
   "extends": "@luminary/tooling/tsconfig.base.json",
   "compilerOptions": {
+    "types": ["node"],
     "outDir": "dist",
     "rootDir": "src",
     "experimentalDecorators": true,

@@ -405,12 +405,12 @@ function validateCapabilityWiring(manifest: ControlManifest): ControlIssue[] {
       ),
     );
   }
-  if (caps.notification === "smtp") {
+  if (caps.notification === "smtp" || caps.notification === "platform") {
     issues.push(
       warning(
         "notification_credentials_external",
         "capabilities.notification",
-        "SMTP credentials must come from env or a secret store — never from this manifest.",
+        "Email provider credentials must come from env or a secret store — never from this manifest.",
       ),
     );
   }
@@ -473,7 +473,11 @@ function validateDegradation(manifest: ControlManifest): ControlIssue[] {
     );
   }
 
-  if (resolved.notification === "drop" && manifest.capabilities?.notification === "smtp") {
+  if (
+    resolved.notification === "drop" &&
+    (manifest.capabilities?.notification === "smtp" ||
+      manifest.capabilities?.notification === "platform")
+  ) {
     issues.push(
       warning(
         "notification_drop",

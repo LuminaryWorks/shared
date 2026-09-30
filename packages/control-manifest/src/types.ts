@@ -27,7 +27,7 @@ export type CapabilityMaturity = "production" | "pilot" | "lab" | "stub";
 export type IdentityMode = "central" | "external_oidc" | "local";
 export type EntitlementMode = "off" | "shadow_read" | "enforce" | "offline_license";
 export type AiMode = "off" | "central" | "local_byok";
-export type NotificationMode = "none" | "smtp";
+export type NotificationMode = "none" | "smtp" | "platform";
 
 export interface ControlCapabilities {
   identity: IdentityMode;

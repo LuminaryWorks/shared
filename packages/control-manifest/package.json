@@ -37,7 +37,7 @@
     "@luminary/tooling": "workspace:*",
     "@rstest/core": "^0.4.1",
     "@types/node": "^24.0.0",
-    "typescript": "^5.7.0"
+    "typescript": "6.0.3"
   },
   "exports": {
     ".": {
@@ -49,6 +49,7 @@
     "./package.json": "./package.json"
   },
   "engines": {
-    "node": ">=24.0.0"
+    "node": ">=24.0.0",
+    "pnpm": ">=11"
   }
 }

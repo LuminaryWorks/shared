@@ -6,8 +6,9 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     // Nest backends load this package via CommonJS; source still uses ES import/export.
-    "module": "CommonJS",
-    "moduleResolution": "Node",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "types": ["node"],
     "declaration": true
   },
   "include": ["src/**/*"],

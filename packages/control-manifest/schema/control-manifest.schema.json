@@ -69,7 +69,8 @@
         "notification": {
           "enum": [
             "none",
-            "smtp"
+            "smtp",
+            "platform"
           ]
         }
       }

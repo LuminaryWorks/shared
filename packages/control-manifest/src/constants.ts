@@ -33,7 +33,7 @@ export const ENTITLEMENT_MODES: readonly EntitlementMode[] = [
   "offline_license",
 ];
 export const AI_MODES: readonly AiMode[] = ["off", "central", "local_byok"];
-export const NOTIFICATION_MODES: readonly NotificationMode[] = ["none", "smtp"];
+export const NOTIFICATION_MODES: readonly NotificationMode[] = ["none", "smtp", "platform"];
 
 export const CONTROL_SERVICE_NAMES: readonly ControlServiceName[] = [
   "identity",
@@ -108,7 +108,7 @@ export const CAPABILITY_MATURITY: Readonly<{
     offline_license: "pilot",
   },
   ai: { off: "production", central: "lab", local_byok: "pilot" },
-  notification: { none: "production", smtp: "pilot" },
+  notification: { none: "production", smtp: "pilot", platform: "pilot" },
 };
 
 /**
