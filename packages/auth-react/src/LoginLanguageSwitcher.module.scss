@@ -1,0 +1,89 @@
+.switch {
+  position: relative;
+  display: inline-flex;
+}
+
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 10px 0 8px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.86);
+  color: #243044;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+
+  &:hover,
+  &[aria-expanded="true"] {
+    border-color: var(--lw-login-accent, #1677ff);
+    color: #0f172a;
+  }
+}
+
+.icon {
+  width: 14px;
+  height: 14px;
+  display: block;
+}
+
+.caret {
+  width: 10px;
+  height: 10px;
+  opacity: 0.65;
+}
+
+.menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 20;
+  min-width: 168px;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 12px 40px rgba(15, 23, 42, 0.16);
+}
+
+.item {
+  display: block;
+  width: 100%;
+  border: 0;
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: transparent;
+  color: #1f2937;
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover {
+    background: #f3f6fb;
+  }
+}
+
+.itemActive {
+  background: color-mix(in srgb, var(--lw-login-accent, #1677ff) 14%, #fff);
+  color: var(--lw-login-accent, #1677ff);
+  font-weight: 650;
+}
+
+.onDark {
+  border-color: rgba(255, 255, 255, 0.22);
+  background: rgba(15, 23, 42, 0.28);
+  color: rgba(255, 255, 255, 0.92);
+
+  &:hover,
+  &[aria-expanded="true"] {
+    border-color: rgba(255, 255, 255, 0.55);
+    color: #fff;
+  }
+}

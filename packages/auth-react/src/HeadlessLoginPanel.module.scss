@@ -126,8 +126,8 @@ $radius-sm: 4px;
 }
 
 .socialStack {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
   font-size: 12px;
 }
@@ -213,8 +213,8 @@ $radius-sm: 4px;
 }
 
 .socialBtn {
-  flex: 1 1 calc(50% - 5px);
-  min-width: min(140px, 100%);
+  width: 100%;
+  min-width: 0;
   display: flex;
   align-items: center;
   justify-content: center;

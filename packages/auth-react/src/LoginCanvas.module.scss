@@ -1,0 +1,79 @@
+.canvas {
+  --lw-login-accent: #1677ff;
+  position: relative;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 56px 20px 24px;
+  overflow: hidden;
+  background:
+    radial-gradient(900px 480px at 8% -8%, color-mix(in srgb, var(--lw-login-accent) 28%, transparent), transparent 58%),
+    radial-gradient(720px 420px at 100% 12%, color-mix(in srgb, var(--lw-login-accent) 16%, transparent), transparent 52%),
+    linear-gradient(165deg, var(--lw-login-bg-a, #f4f7fb) 0%, var(--lw-login-bg-b, #e7eef6) 100%);
+  color: var(--lw-login-ink, #122033);
+}
+
+.canvas[data-tone="console"] {
+  --lw-login-accent: #7eb6ff;
+  --lw-login-bg-a: #0e1726;
+  --lw-login-bg-b: #1a2740;
+  --lw-login-ink: #e8eef8;
+  --lw-login-grid: rgba(255, 255, 255, 0.05);
+}
+
+.canvas[data-tone="vista"] {
+  --lw-login-accent: #1677ff;
+  --lw-login-bg-a: #f4f7fb;
+  --lw-login-bg-b: #dde7f0;
+  --lw-login-grid: rgba(11, 18, 32, 0.045);
+}
+
+.canvas[data-tone="data"] {
+  --lw-login-accent: #5aa2ff;
+  --lw-login-bg-a: #070b14;
+  --lw-login-bg-b: #12203a;
+  --lw-login-ink: #e8eefc;
+  --lw-login-grid: rgba(255, 255, 255, 0.045);
+}
+
+.canvas[data-tone="edu"] {
+  --lw-login-accent: #f59e0b;
+  --lw-login-bg-a: #fff7ed;
+  --lw-login-bg-b: #e0e7ff;
+  --lw-login-grid: rgba(67, 56, 202, 0.06);
+}
+
+.grid {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(var(--lw-login-grid, rgba(15, 23, 42, 0.04)) 1px, transparent 1px),
+    linear-gradient(90deg, var(--lw-login-grid, rgba(15, 23, 42, 0.04)) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse at center, #000 18%, transparent 74%);
+}
+
+.lang {
+  position: fixed;
+  top: 14px;
+  right: 16px;
+  z-index: 5;
+}
+
+.decor {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.slot {
+  position: relative;
+  z-index: 1;
+  width: min(440px, 100%);
+}
+
+.slotFill {
+  width: min(1120px, 100%);
+}
