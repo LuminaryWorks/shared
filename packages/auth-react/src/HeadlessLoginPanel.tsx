@@ -16,6 +16,7 @@ import {
   resolveRegisterEmailPolicy,
   type RegisterEmailPolicy,
 } from "./register-policy";
+import { loginLabels } from "./login-labels";
 import { isIdpConfigured, type LuminaryAuthSession, type LuminaryIdpConfig } from "./types";
 import styles from "./HeadlessLoginPanel.module.scss";
 
@@ -77,6 +78,11 @@ export interface HeadlessLoginPanelProps {
   productName: string;
   logoSrc?: string;
   labels?: HeadlessLoginLabels;
+  /**
+   * Card copy locale (`en` | `zh-CN` | `zh-TW` | `es`, plus `zh` → zh-CN).
+   * Explicit `labels` still override individual keys.
+   */
+  locale?: string;
   returnUrl?: string;
   /** Prefer popup (default) for reauth; redirect for full-page SPA; external for desktop/mobile system browser (RFC 8252). */
   mode?: "popup" | "redirect" | "external";
@@ -213,6 +219,7 @@ export function HeadlessLoginPanel({
   productName,
   logoSrc,
   labels: labelsProp,
+  locale,
   returnUrl,
   mode = "popup",
   openExternalUrl,
@@ -270,7 +277,7 @@ export function HeadlessLoginPanel({
       experienceAdapter.emailPolicy = emailPolicy;
     }
   }, [emailPolicy, experienceAdapter]);
-  const labels = { ...defaults, ...labelsProp };
+  const labels = { ...defaults, ...loginLabels(locale), ...labelsProp };
   const configured = isIdpConfigured(config);
   const [panelMode, setPanelMode] = useState<"sign-in" | "register">("sign-in");
   const [registerChannel, setRegisterChannel] = useState<"email" | "username">("email");
