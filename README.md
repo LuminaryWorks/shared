@@ -10,7 +10,7 @@
 |----|------|------|
 | `@luminary/tooling` | workspace 内部 | Biome preset + tsconfig base（不发布） |
 | `@luminaryworks/auth-core` | ✅ 0.2.2 | OIDC JWKS 验签（NestJS） |
-| `@luminaryworks/auth-react` | ✅ 0.3.1 | Headless + OIDC PKCE（React SPA） |
+| `@luminaryworks/auth-react` | ✅ 0.7.0 | Headless + OIDC PKCE（React SPA） |
 | `@luminaryworks/auth-dev-proxy` | ✅ 0.1.0 | 同域 `/oidc` + Experience 开发代理 |
 | `@luminaryworks/pal` | ✅ 0.2.0 | 权限抽象层 |
 | `@luminaryworks/notification` | ✅ 0.1.0 | NotificationModule（SMTP） |

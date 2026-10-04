@@ -7,6 +7,7 @@ export * from "./experience-client";
 export * from "./auth-gate";
 export * from "./LuminaryAuthProvider";
 export * from "./AuthGateProvider";
+export * from "./login-legal";
 export * from "./HeadlessLoginPanel";
 export * from "./login-labels";
 export * from "./LoginLanguageSwitcher";

@@ -41,7 +41,14 @@ export interface ExperiencePasswordSignInInput {
 export interface ExperiencePasswordSignInResult {
   /** Continue URL from Experience submit (complete OIDC interaction). */
   redirectTo?: string;
+  /** Password succeeded, but Logto still requires an authenticator code. */
+  mfaRequired?: boolean;
   raw?: unknown;
+}
+
+export interface ExperienceMfaTotpInput {
+  apiBase: string;
+  code: string;
 }
 
 /** Same OIDC bootstrap fields as sign-in; username must match Logto username rules. */
@@ -116,6 +123,8 @@ export interface LoginExperienceAdapter {
   experiencePasswordSignIn?(
     input: ExperiencePasswordSignInInput,
   ): Promise<ExperiencePasswordSignInResult>;
+  /** Finish a pending TOTP challenge on the current Experience session, then submit. */
+  experienceVerifyTotp?(input: ExperienceMfaTotpInput): Promise<ExperiencePasswordSignInResult>;
   /**
    * Self-register with username + password (Logto Register + NewPasswordIdentity).
    * Email/phone sign-up needs verification codes — not covered by this method.

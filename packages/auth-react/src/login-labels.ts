@@ -1,7 +1,17 @@
 import type { HeadlessLoginLabels } from "./HeadlessLoginPanel";
 
 /** Locales shipped with the shared login card. Products may pass a wider menu. */
-export type LoginLocale = "en" | "zh-CN" | "zh-TW" | "es";
+export type LoginLocale =
+  | "zh-CN"
+  | "zh-TW"
+  | "ja"
+  | "ko"
+  | "en"
+  | "pt"
+  | "nl"
+  | "it"
+  | "es"
+  | "fr";
 
 export interface LoginLocaleOption {
   code: string;
@@ -9,11 +19,18 @@ export interface LoginLocaleOption {
   short: string;
 }
 
+/** Menu order: CJK and English first; long European names, then Spanish and French. */
 export const DEFAULT_LOGIN_LOCALES: readonly LoginLocaleOption[] = [
-  { code: "en", label: "English", short: "EN" },
   { code: "zh-CN", label: "简体中文", short: "简" },
   { code: "zh-TW", label: "繁體中文", short: "繁" },
+  { code: "ja", label: "日本語", short: "JA" },
+  { code: "ko", label: "한국어", short: "KO" },
+  { code: "en", label: "English", short: "EN" },
+  { code: "pt", label: "Português", short: "PT" },
+  { code: "nl", label: "Nederlands", short: "NL" },
+  { code: "it", label: "Italiano", short: "IT" },
   { code: "es", label: "Español", short: "ES" },
+  { code: "fr", label: "Français", short: "FR" },
 ];
 
 const ZH_CN: HeadlessLoginLabels = {
@@ -50,6 +67,12 @@ const ZH_CN: HeadlessLoginLabels = {
   allowedDomainsOpen: "大多数邮箱都可以注册。",
   allowedDomainsBlocklist: "大多数邮箱可用。临时邮箱会被拒绝。",
   waitingExternalBrowser: "请在浏览器中完成登录，然后回到本应用。",
+  consentRequired: "请先同意用户协议后再继续。",
+  mfaTitle: "身份验证码",
+  mfaSubtitle: "输入验证器应用中的 6 位数字。",
+  mfaCodePlaceholder: "6 位验证码",
+  mfaSubmit: "验证并继续",
+  mfaBack: "返回",
 };
 
 const ZH_TW: HeadlessLoginLabels = {
@@ -86,6 +109,12 @@ const ZH_TW: HeadlessLoginLabels = {
   allowedDomainsOpen: "大多數電子郵件都可以註冊。",
   allowedDomainsBlocklist: "大多數電子郵件可用。臨時信箱會被拒絕。",
   waitingExternalBrowser: "請在瀏覽器中完成登入，然後回到本應用。",
+  consentRequired: "請先同意使用條款後再繼續。",
+  mfaTitle: "身分驗證碼",
+  mfaSubtitle: "輸入驗證器應用程式中的 6 位數字。",
+  mfaCodePlaceholder: "6 位驗證碼",
+  mfaSubmit: "驗證並繼續",
+  mfaBack: "返回",
 };
 
 const ES: HeadlessLoginLabels = {
@@ -123,13 +152,248 @@ const ES: HeadlessLoginLabels = {
   allowedDomainsOpen: "El registro por correo está abierto para la mayoría de proveedores.",
   allowedDomainsBlocklist: "Se aceptan la mayoría de correos. Se bloquean direcciones temporales.",
   waitingExternalBrowser: "Termina el inicio de sesión en el navegador y vuelve a esta app.",
+  consentRequired: "Acepta los términos antes de continuar.",
+};
+
+const JA: HeadlessLoginLabels = {
+  title: "ログイン",
+  subtitle: "LuminaryWorks 統合アカウントを使用",
+  identifierPlaceholder: "メールまたはユーザー名",
+  registerIdentifierPlaceholder: "ユーザー名",
+  passwordPlaceholder: "パスワード",
+  confirmPasswordPlaceholder: "パスワード確認",
+  submitPassword: "パスワードでログイン",
+  submitRegister: "アカウント作成",
+  submitSso: "統合アカウントで続ける",
+  submitGoogle: "Google",
+  submitGithub: "GitHub",
+  socialDivider: "または",
+  hint: "ソーシャルは各サービスを直接開きます。パスワードは LuminaryWorks アカウントです。",
+  registerHint: "メール登録には確認コードが必要です。ユーザー名またはソーシャルも使えます。",
+  cancel: "キャンセル",
+  experienceUnavailable: "パスワードログインは使えません。ソーシャルをお使いください。",
+  showPassword: "パスワードを表示",
+  hidePassword: "パスワードを隠す",
+  registerLink: "アカウントを作成",
+  loginLink: "アカウントをお持ちですか？ログイン",
+  passwordMismatch: "パスワードが一致しません",
+  registerTitle: "アカウント作成",
+  registerSubtitle: "LuminaryWorks 統合アカウントを作成",
+  registerWithEmail: "メール",
+  registerWithUsername: "ユーザー名",
+  emailPlaceholder: "メール",
+  verificationCodePlaceholder: "確認コード",
+  sendCode: "コードを送信",
+  resendCode: "再送信",
+  allowedDomainsPrefix: "利用できるメールドメイン",
+  allowedDomainsOpen: "ほとんどのメールで登録できます。",
+  allowedDomainsBlocklist: "ほとんどのメールは使えます。使い捨てアドレスは拒否されます。",
+  waitingExternalBrowser: "ブラウザでログインを終えたら、このアプリに戻ってください。",
+  consentRequired: "続ける前に利用規約へ同意してください。",
+};
+
+const KO: HeadlessLoginLabels = {
+  title: "로그인",
+  subtitle: "LuminaryWorks 통합 계정 사용",
+  identifierPlaceholder: "이메일 또는 사용자 이름",
+  registerIdentifierPlaceholder: "사용자 이름",
+  passwordPlaceholder: "비밀번호",
+  confirmPasswordPlaceholder: "비밀번호 확인",
+  submitPassword: "비밀번호로 로그인",
+  submitRegister: "계정 만들기",
+  submitSso: "통합 계정으로 계속",
+  submitGoogle: "Google",
+  submitGithub: "GitHub",
+  socialDivider: "또는",
+  hint: "소셜 로그인은 해당 서비스를 바로 엽니다. 비밀번호는 LuminaryWorks 계정입니다.",
+  registerHint: "이메일 가입에는 인증 코드가 필요합니다. 사용자 이름이나 소셜도 사용할 수 있습니다.",
+  cancel: "취소",
+  experienceUnavailable: "비밀번호 로그인을 사용할 수 없습니다. 소셜 로그인을 사용하세요.",
+  showPassword: "비밀번호 표시",
+  hidePassword: "비밀번호 숨기기",
+  registerLink: "계정 만들기",
+  loginLink: "계정이 있나요? 로그인",
+  passwordMismatch: "비밀번호가 일치하지 않습니다",
+  registerTitle: "계정 만들기",
+  registerSubtitle: "LuminaryWorks 통합 계정 만들기",
+  registerWithEmail: "이메일",
+  registerWithUsername: "사용자 이름",
+  emailPlaceholder: "이메일",
+  verificationCodePlaceholder: "인증 코드",
+  sendCode: "코드 보내기",
+  resendCode: "다시 보내기",
+  allowedDomainsPrefix: "허용된 이메일 도메인",
+  allowedDomainsOpen: "대부분의 이메일로 가입할 수 있습니다.",
+  allowedDomainsBlocklist: "대부분의 이메일을 허용합니다. 임시 주소는 거부됩니다.",
+  waitingExternalBrowser: "브라우저에서 로그인을 마친 뒤 이 앱으로 돌아오세요.",
+  consentRequired: "계속하려면 약관에 동의하세요.",
+};
+
+const PT: HeadlessLoginLabels = {
+  title: "Entrar",
+  subtitle: "Use a conta unificada LuminaryWorks",
+  identifierPlaceholder: "E-mail ou usuário",
+  registerIdentifierPlaceholder: "Usuário",
+  passwordPlaceholder: "Senha",
+  confirmPasswordPlaceholder: "Confirmar senha",
+  submitPassword: "Entrar com senha",
+  submitRegister: "Criar conta",
+  submitSso: "Continuar com a conta unificada",
+  submitGoogle: "Google",
+  submitGithub: "GitHub",
+  socialDivider: "ou",
+  hint: "Redes sociais abrem o provedor direto. A senha usa sua conta LuminaryWorks.",
+  registerHint: "O cadastro por e-mail pede um código. Também dá para usar usuário ou rede social.",
+  cancel: "Cancelar",
+  experienceUnavailable: "Entrada por senha indisponível. Use uma rede social.",
+  showPassword: "Mostrar senha",
+  hidePassword: "Ocultar senha",
+  registerLink: "Criar uma conta",
+  loginLink: "Já tem conta? Entrar",
+  passwordMismatch: "As senhas não coincidem",
+  registerTitle: "Criar conta",
+  registerSubtitle: "Crie sua conta unificada LuminaryWorks",
+  registerWithEmail: "E-mail",
+  registerWithUsername: "Usuário",
+  emailPlaceholder: "E-mail",
+  verificationCodePlaceholder: "Código",
+  sendCode: "Enviar código",
+  resendCode: "Reenviar",
+  allowedDomainsPrefix: "Domínios de e-mail permitidos",
+  allowedDomainsOpen: "O cadastro por e-mail está aberto para a maioria dos provedores.",
+  allowedDomainsBlocklist: "A maioria dos e-mails é aceita. Endereços temporários são bloqueados.",
+  waitingExternalBrowser: "Conclua o login no navegador e volte a este app.",
+  consentRequired: "Aceite os termos antes de continuar.",
+};
+
+const NL: HeadlessLoginLabels = {
+  title: "Inloggen",
+  subtitle: "Gebruik je LuminaryWorks-account",
+  identifierPlaceholder: "E-mail of gebruikersnaam",
+  registerIdentifierPlaceholder: "Gebruikersnaam",
+  passwordPlaceholder: "Wachtwoord",
+  confirmPasswordPlaceholder: "Bevestig wachtwoord",
+  submitPassword: "Inloggen met wachtwoord",
+  submitRegister: "Account maken",
+  submitSso: "Doorgaan met unified account",
+  submitGoogle: "Google",
+  submitGithub: "GitHub",
+  socialDivider: "of",
+  hint: "Sociale logins openen de provider direct. Het wachtwoord is je LuminaryWorks-account.",
+  registerHint: "Registreren via e-mail vraagt een code. Een gebruikersnaam of sociale login kan ook.",
+  cancel: "Annuleren",
+  experienceUnavailable: "Inloggen met wachtwoord is niet beschikbaar. Gebruik een sociale login.",
+  showPassword: "Wachtwoord tonen",
+  hidePassword: "Wachtwoord verbergen",
+  registerLink: "Account maken",
+  loginLink: "Al een account? Inloggen",
+  passwordMismatch: "Wachtwoorden komen niet overeen",
+  registerTitle: "Account maken",
+  registerSubtitle: "Maak je LuminaryWorks-account",
+  registerWithEmail: "E-mail",
+  registerWithUsername: "Gebruikersnaam",
+  emailPlaceholder: "E-mail",
+  verificationCodePlaceholder: "Code",
+  sendCode: "Code versturen",
+  resendCode: "Opnieuw",
+  allowedDomainsPrefix: "Toegestane e-maildomeinen",
+  allowedDomainsOpen: "Registreren kan met de meeste e-mailproviders.",
+  allowedDomainsBlocklist: "De meeste adressen zijn toegestaan. Tijdelijke adressen worden geweigerd.",
+  waitingExternalBrowser: "Rond het inloggen af in de browser en kom terug naar deze app.",
+  consentRequired: "Ga eerst akkoord met de voorwaarden.",
+};
+
+const IT: HeadlessLoginLabels = {
+  title: "Accedi",
+  subtitle: "Usa l'account unificato LuminaryWorks",
+  identifierPlaceholder: "Email o nome utente",
+  registerIdentifierPlaceholder: "Nome utente",
+  passwordPlaceholder: "Password",
+  confirmPasswordPlaceholder: "Conferma password",
+  submitPassword: "Accedi con password",
+  submitRegister: "Crea account",
+  submitSso: "Continua con l'account unificato",
+  submitGoogle: "Google",
+  submitGithub: "GitHub",
+  socialDivider: "oppure",
+  hint: "I social aprono il provider. La password usa il tuo account LuminaryWorks.",
+  registerHint: "La registrazione email chiede un codice. Puoi anche usare un nome utente o un social.",
+  cancel: "Annulla",
+  experienceUnavailable: "Accesso con password non disponibile. Usa un social.",
+  showPassword: "Mostra password",
+  hidePassword: "Nascondi password",
+  registerLink: "Crea un account",
+  loginLink: "Hai già un account? Accedi",
+  passwordMismatch: "Le password non coincidono",
+  registerTitle: "Crea account",
+  registerSubtitle: "Crea il tuo account unificato LuminaryWorks",
+  registerWithEmail: "Email",
+  registerWithUsername: "Nome utente",
+  emailPlaceholder: "Email",
+  verificationCodePlaceholder: "Codice",
+  sendCode: "Invia codice",
+  resendCode: "Invia di nuovo",
+  allowedDomainsPrefix: "Domini email consentiti",
+  allowedDomainsOpen: "La registrazione email è aperta per la maggior parte dei provider.",
+  allowedDomainsBlocklist: "La maggior parte delle email è accettata. Gli indirizzi temporanei sono bloccati.",
+  waitingExternalBrowser: "Completa l'accesso nel browser e torna a questa app.",
+  consentRequired: "Accetta i termini prima di continuare.",
+};
+
+const FR: HeadlessLoginLabels = {
+  title: "Connexion",
+  subtitle: "Utilisez votre compte unifié LuminaryWorks",
+  identifierPlaceholder: "E-mail ou nom d'utilisateur",
+  registerIdentifierPlaceholder: "Nom d'utilisateur",
+  passwordPlaceholder: "Mot de passe",
+  confirmPasswordPlaceholder: "Confirmer le mot de passe",
+  submitPassword: "Se connecter avec mot de passe",
+  submitRegister: "Créer un compte",
+  submitSso: "Continuer avec le compte unifié",
+  submitGoogle: "Google",
+  submitGithub: "GitHub",
+  socialDivider: "ou",
+  hint: "Les réseaux ouvrent le fournisseur. Le mot de passe utilise votre compte LuminaryWorks.",
+  registerHint:
+    "L'inscription par e-mail demande un code. Un nom d'utilisateur ou un réseau social convient aussi.",
+  cancel: "Annuler",
+  experienceUnavailable: "Connexion par mot de passe indisponible. Utilisez un réseau social.",
+  showPassword: "Afficher le mot de passe",
+  hidePassword: "Masquer le mot de passe",
+  registerLink: "Créer un compte",
+  loginLink: "Déjà un compte ? Se connecter",
+  passwordMismatch: "Les mots de passe ne correspondent pas",
+  registerTitle: "Créer un compte",
+  registerSubtitle: "Créez votre compte unifié LuminaryWorks",
+  registerWithEmail: "E-mail",
+  registerWithUsername: "Nom d'utilisateur",
+  emailPlaceholder: "E-mail",
+  verificationCodePlaceholder: "Code",
+  sendCode: "Envoyer le code",
+  resendCode: "Renvoyer",
+  allowedDomainsPrefix: "Domaines e-mail autorisés",
+  allowedDomainsOpen: "L'inscription par e-mail est ouverte pour la plupart des fournisseurs.",
+  allowedDomainsBlocklist: "La plupart des e-mails sont acceptés. Les adresses jetables sont refusées.",
+  waitingExternalBrowser: "Terminez la connexion dans le navigateur, puis revenez à cette application.",
+  consentRequired: "Acceptez les conditions avant de continuer.",
+  mfaTitle: "Code d'authentification",
+  mfaSubtitle: "Saisissez le code à 6 chiffres de votre application.",
+  mfaCodePlaceholder: "123456",
+  mfaSubmit: "Vérifier et continuer",
+  mfaBack: "Retour",
 };
 
 const BY_LOCALE: Record<LoginLocale, HeadlessLoginLabels | undefined> = {
   en: undefined,
   "zh-CN": ZH_CN,
   "zh-TW": ZH_TW,
+  ja: JA,
+  ko: KO,
+  pt: PT,
+  nl: NL,
+  it: IT,
   es: ES,
+  fr: FR,
 };
 
 /** Normalize product locale tags (`zh`, `zh-Hans`) onto the card dictionary. */
@@ -138,8 +402,16 @@ export function normalizeLoginLocale(locale: string | undefined): LoginLocale {
   if (raw === "zh" || raw === "zh-cn" || raw === "zh-hans" || raw.startsWith("zh-cn")) {
     return "zh-CN";
   }
-  if (raw === "zh-tw" || raw === "zh-hant" || raw.startsWith("zh-tw")) return "zh-TW";
+  if (raw === "zh-tw" || raw === "zh-hant" || raw.startsWith("zh-tw") || raw.startsWith("zh-hk")) {
+    return "zh-TW";
+  }
+  if (raw === "ja" || raw.startsWith("ja-")) return "ja";
+  if (raw === "ko" || raw.startsWith("ko-")) return "ko";
+  if (raw === "pt" || raw.startsWith("pt-")) return "pt";
+  if (raw === "nl" || raw.startsWith("nl-")) return "nl";
+  if (raw === "it" || raw.startsWith("it-")) return "it";
   if (raw === "es" || raw.startsWith("es-")) return "es";
+  if (raw === "fr" || raw.startsWith("fr-")) return "fr";
   if (raw === "en" || raw.startsWith("en-")) return "en";
   return "en";
 }
