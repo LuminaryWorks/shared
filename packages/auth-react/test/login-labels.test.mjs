@@ -12,5 +12,12 @@ test("zh-TW and es differ from English defaults", () => {
   assert.equal(loginLabels("zh-TW").title, "登入");
   assert.equal(loginLabels("es").registerLink, "Crear una cuenta");
   assert.deepEqual(loginLabels("en"), {});
-  assert.deepEqual(loginLabels("ja"), {});
+});
+
+test("ja, ko, and fr resolve card copy", () => {
+  assert.equal(normalizeLoginLocale("ja-JP"), "ja");
+  assert.equal(normalizeLoginLocale("fr-FR"), "fr");
+  assert.equal(loginLabels("ja").title, "ログイン");
+  assert.equal(loginLabels("ko").consentRequired, "계속하려면 약관에 동의하세요.");
+  assert.equal(loginLabels("fr").consentRequired, "Acceptez les conditions avant de continuer.");
 });

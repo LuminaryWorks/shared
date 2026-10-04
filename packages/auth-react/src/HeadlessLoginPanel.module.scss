@@ -19,7 +19,9 @@ $radius-sm: 4px;
 .panel {
   --lw-auth-theme: #1677ff;
   --lw-auth-theme-deep: color-mix(in srgb, var(--lw-auth-theme) 72%, #000);
+  box-sizing: border-box;
   width: min(100%, 400px);
+  max-width: 400px;
   padding: 28px 28px 22px;
   border-radius: $radius-lg;
   background: rgba(255, 255, 255, 0.96);
@@ -333,6 +335,36 @@ $radius-sm: 4px;
   line-height: 1.4;
 }
 
+.consent {
+  margin: 12px 0 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: $ink;
+}
+
+.consentInvalid {
+  margin: 12px -8px 0;
+  padding: 8px;
+  border: 1px solid $danger;
+  border-radius: $radius-md;
+  background: rgba(180, 35, 24, 0.06);
+}
+
+.consentError {
+  margin: 8px 0 0;
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.4;
+  color: $danger;
+}
+
+.consentLinks {
+  margin: 0;
+  a {
+    color: var(--lw-auth-theme);
+  }
+}
+
 .footer {
   margin-top: 18px;
   padding-top: 12px;
@@ -342,4 +374,10 @@ $radius-sm: 4px;
   display: flex;
   gap: 8px;
   justify-content: center;
+}
+
+@media (max-width: 420px) {
+  .panel {
+    padding: 22px 16px 18px;
+  }
 }

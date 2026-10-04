@@ -1,6 +1,6 @@
 {
   "name": "@luminaryworks/auth-react",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "license": "Polyform-Noncommercial-1.0.0",
   "description": "LuminaryWorks unified OIDC SPA client (Logto / enterprise IdP)",
   "repository": {

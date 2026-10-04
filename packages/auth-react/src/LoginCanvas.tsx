@@ -37,7 +37,7 @@ export function LoginCanvas({
           onChange={onLocaleChange}
           locales={locales}
           label={languageLabel}
-          variant={tone === "console" || tone === "data" ? "onDark" : "default"}
+          variant={tone === "console" || tone === "data" || tone === "edu" ? "onDark" : "default"}
         />
       </div>
       <div className={fill ? `${styles.slot} ${styles.slotFill}` : styles.slot}>{children}</div>

@@ -1,4 +1,11 @@
-import { useEffect, useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type FormEvent,
+  type ReactNode,
+} from "react";
 import {
   LOGIN_EXPERIENCE_CAPABILITIES,
   resolveLoginExperienceAdapter,
@@ -17,6 +24,7 @@ import {
   type RegisterEmailPolicy,
 } from "./register-policy";
 import { loginLabels } from "./login-labels";
+import type { LoginLegalDocument } from "./login-legal";
 import { isIdpConfigured, type LuminaryAuthSession, type LuminaryIdpConfig } from "./types";
 import styles from "./HeadlessLoginPanel.module.scss";
 
@@ -68,6 +76,13 @@ export interface HeadlessLoginLabels {
    * and return to the app (loopback / deep link callback).
    */
   waitingExternalBrowser?: string;
+  /** Shown when password/social/SSO is blocked because product terms are not accepted. */
+  consentRequired?: string;
+  mfaTitle?: string;
+  mfaSubtitle?: string;
+  mfaCodePlaceholder?: string;
+  mfaSubmit?: string;
+  mfaBack?: string;
 }
 
 export interface HeadlessLoginPanelProps {
@@ -79,7 +94,7 @@ export interface HeadlessLoginPanelProps {
   logoSrc?: string;
   labels?: HeadlessLoginLabels;
   /**
-   * Card copy locale (`en` | `zh-CN` | `zh-TW` | `es`, plus `zh` → zh-CN).
+   * Card copy locale. Unknown tags fall back to English.
    * Explicit `labels` still override individual keys.
    */
   locale?: string;
@@ -136,6 +151,29 @@ export interface HeadlessLoginPanelProps {
   onOidcSession?: (session: LuminaryAuthSession, returnUrl?: string) => Promise<void> | void;
   /** When Experience returns redirectTo, open it (default: same-tab assign). */
   onExperienceRedirect?: (redirectTo: string) => void;
+  /**
+   * Product terms / remember-account controls. Rendered after the password form
+   * and before Google/GitHub so clickwrap sits next to every sign-in action.
+   * Prefer this when the product needs extra checkboxes (remember identifier).
+   */
+  consent?: ReactNode;
+  /**
+   * Configurable legal links (LuminaryWorks platform ToS + product ToS + privacy).
+   * Shown only when `consent` is omitted. Use `readLoginLegalConfigFromEnv` +
+   * `buildLoginLegalDocuments` so URLs stay env-driven.
+   */
+  consentDocuments?: LoginLegalDocument[];
+  /**
+   * When `false`, password, register, hosted SSO, and social buttons do not start
+   * IdP — products must collect an unchecked terms checkbox first.
+   * Default `true` (no gate) for consoles that do not show product ToS yet.
+   */
+  consentOk?: boolean;
+  /** Called when an action is blocked because `consentOk` is false. */
+  onConsentBlocked?: () => void;
+  /** Prefill identifier (remember-account). Never pass a stored password. */
+  initialIdentifier?: string;
+  onIdentifierChange?: (identifier: string) => void;
   footer?: ReactNode;
   className?: string;
   style?: CSSProperties;
@@ -148,6 +186,9 @@ export interface HeadlessLoginPanelProps {
 
 /** Shared default accent for product login panels (shared/brand --lw-primary). */
 export const DEFAULT_LOGIN_THEME_COLOR = "#1677ff";
+
+/** Unified login card width. Product pages must not invent a second width. */
+export const LOGIN_CARD_MAX_WIDTH = 400;
 
 const defaults: Required<HeadlessLoginLabels> = {
   title: "Sign in",
@@ -186,6 +227,12 @@ const defaults: Required<HeadlessLoginLabels> = {
     "Most email providers are accepted. Temporary / disposable addresses are blocked.",
   waitingExternalBrowser:
     "Finish signing in with your browser, then return to this app.",
+  consentRequired: "Please agree to the terms before continuing.",
+  mfaTitle: "Authenticator code",
+  mfaSubtitle: "Enter the 6-digit code from your authenticator app.",
+  mfaCodePlaceholder: "123456",
+  mfaSubmit: "Verify and continue",
+  mfaBack: "Back",
 };
 
 function resolveSieBase(config: Partial<LuminaryIdpConfig>): string | undefined {
@@ -233,6 +280,12 @@ export function HeadlessLoginPanel({
   onCancel,
   onOidcSession,
   onExperienceRedirect,
+  consent,
+  consentDocuments,
+  consentOk = true,
+  onConsentBlocked,
+  initialIdentifier,
+  onIdentifierChange,
   footer,
   className,
   style,
@@ -281,18 +334,30 @@ export function HeadlessLoginPanel({
   const configured = isIdpConfigured(config);
   const [panelMode, setPanelMode] = useState<"sign-in" | "register">("sign-in");
   const [registerChannel, setRegisterChannel] = useState<"email" | "username">("email");
-  const [identifier, setIdentifier] = useState("");
+  const [identifier, setIdentifier] = useState(initialIdentifier ?? "");
+  const hydratedIdentifier = useRef(false);
+  useEffect(() => {
+    if (hydratedIdentifier.current) return;
+    if (!initialIdentifier) return;
+    hydratedIdentifier.current = true;
+    setIdentifier(initialIdentifier);
+  }, [initialIdentifier]);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [verificationCode, setVerificationCode] = useState("");
   const [emailVerificationId, setEmailVerificationId] = useState<string | null>(null);
   const [passwordVisible, setPasswordVisible] = useState(false);
   const panelStyle: CSSProperties = {
+    width: `min(100%, ${LOGIN_CARD_MAX_WIDTH}px)`,
+    maxWidth: LOGIN_CARD_MAX_WIDTH,
     ...style,
     ["--lw-auth-theme" as string]: themeColor || DEFAULT_LOGIN_THEME_COLOR,
   };
   const [loading, setLoading] = useState<"password" | string | null>(null);
   const [error, setError] = useState("");
+  const [consentBlocked, setConsentBlocked] = useState(false);
+  const [mfaPending, setMfaPending] = useState(false);
+  const [mfaCode, setMfaCode] = useState("");
   const [awaitingExternal, setAwaitingExternal] = useState(false);
   const [connectors, setConnectors] = useState<ExperienceSocialConnector[]>([]);
   const socialEnabled =
@@ -383,6 +448,17 @@ export function HeadlessLoginPanel({
     socialProviders,
   ]);
 
+  useEffect(() => {
+    if (consentOk) setConsentBlocked(false);
+  }, [consentOk]);
+
+  const ensureConsent = (): boolean => {
+    if (consentOk) return true;
+    setConsentBlocked(true);
+    onConsentBlocked?.();
+    return false;
+  };
+
   const runOidc = async (experienceRequest?: SocialSignInRequest) => {
     if (!configured) throw new Error("IdP not configured");
     if (mode === "external") {
@@ -410,6 +486,7 @@ export function HeadlessLoginPanel({
   };
 
   const runSocial = async (target: string) => {
+    if (!ensureConsent()) return;
     setError("");
     setLoading(target);
     try {
@@ -431,6 +508,7 @@ export function HeadlessLoginPanel({
   };
 
   const runHostedOidc = async () => {
+    if (!ensureConsent()) return;
     setError("");
     setLoading("sso");
     try {
@@ -453,6 +531,7 @@ export function HeadlessLoginPanel({
   const runPassword = async (event: FormEvent) => {
     event.preventDefault();
     if (!configured) return;
+    if (!ensureConsent()) return;
     setError("");
     setLoading("password");
     try {
@@ -533,6 +612,37 @@ export function HeadlessLoginPanel({
         scopes: config.scopes,
         returnUrl,
       });
+      if (result.mfaRequired) {
+        setMfaPending(true);
+        setMfaCode("");
+        setLoading(null);
+        return;
+      }
+      if (result.redirectTo) {
+        followExperienceRedirect(result.redirectTo);
+        return;
+      }
+      throw new Error("Experience API did not return redirectTo");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+      setLoading(null);
+    }
+  };
+
+  const runMfa = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!configured || !ensureConsent()) return;
+    setError("");
+    setLoading("mfa");
+    try {
+      const apiBase = config.experienceApiBase?.trim();
+      if (!apiBase || !experienceAdapter.experienceVerifyTotp) {
+        throw new Error(labels.experienceUnavailable);
+      }
+      const result = await experienceAdapter.experienceVerifyTotp({
+        apiBase,
+        code: mfaCode,
+      });
       if (result.redirectTo) {
         followExperienceRedirect(result.redirectTo);
         return;
@@ -546,6 +656,7 @@ export function HeadlessLoginPanel({
 
   const runSendCode = async () => {
     if (!configured || !useEmailRegister) return;
+    if (!ensureConsent()) return;
     setError("");
     setLoading("send-code");
     try {
@@ -593,8 +704,12 @@ export function HeadlessLoginPanel({
     Boolean(password) &&
     (!isRegister || Boolean(confirmPassword)) &&
     (!useEmailRegister || (Boolean(verificationCode.trim()) && Boolean(emailVerificationId)));
-  const titleText = isRegister ? labels.registerTitle : labels.title;
-  const subtitleText = isRegister ? labels.registerSubtitle : labels.subtitle;
+  const titleText = mfaPending ? labels.mfaTitle : isRegister ? labels.registerTitle : labels.title;
+  const subtitleText = mfaPending
+    ? labels.mfaSubtitle
+    : isRegister
+      ? labels.registerSubtitle
+      : labels.subtitle;
   const identifierPlaceholder = isRegister
     ? useEmailRegister
       ? labels.emailPlaceholder
@@ -624,7 +739,39 @@ export function HeadlessLoginPanel({
 
       {configured ? (
         <>
-          {passwordEnabled ? (
+          {passwordEnabled && mfaPending ? (
+            <form onSubmit={(e) => void runMfa(e)} className={styles.form}>
+              <input
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                name="totp"
+                placeholder={labels.mfaCodePlaceholder}
+                value={mfaCode}
+                onChange={(e) => setMfaCode(e.target.value)}
+                className={styles.input}
+                disabled={busy}
+              />
+              <button
+                type="submit"
+                className={styles.primaryBtn}
+                disabled={busy || mfaCode.trim().length < 6}
+              >
+                {loading === "mfa" ? "…" : labels.mfaSubmit}
+              </button>
+              <button
+                type="button"
+                className={styles.cancelBtn}
+                disabled={busy}
+                onClick={() => {
+                  setMfaPending(false);
+                  setMfaCode("");
+                  setError("");
+                }}
+              >
+                {labels.mfaBack}
+              </button>
+            </form>
+          ) : passwordEnabled ? (
             <form onSubmit={(e) => void runPassword(e)} className={styles.form}>
               {isRegister && emailRegisterEnabled && usernameRegisterEnabled ? (
                 <div className={styles.channelTabs} role="tablist" aria-label="Register method">
@@ -673,7 +820,9 @@ export function HeadlessLoginPanel({
                 placeholder={identifierPlaceholder}
                 value={identifier}
                 onChange={(e) => {
-                  setIdentifier(e.target.value);
+                  const next = e.target.value;
+                  setIdentifier(next);
+                  onIdentifierChange?.(next);
                   if (useEmailRegister) {
                     setEmailVerificationId(null);
                   }
@@ -765,6 +914,26 @@ export function HeadlessLoginPanel({
               </button>
             </div>
           )}
+          {consent || (consentDocuments && consentDocuments.length > 0) || consentBlocked ? (
+            <div className={cx(styles.consent, consentBlocked && styles.consentInvalid)}>
+              {consent ? (
+                consent
+              ) : consentDocuments && consentDocuments.length > 0 ? (
+                <p className={styles.consentLinks}>
+                  {consentDocuments.map((doc, index) => (
+                    <span key={doc.id}>
+                      {index > 0 ? " · " : null}
+                      <a href={doc.href} target="_blank" rel="noopener noreferrer">
+                        {doc.label}
+                      </a>
+                    </span>
+                  ))}
+                </p>
+              ) : null}
+              {consentBlocked ? <p className={styles.consentError}>{labels.consentRequired}</p> : null}
+            </div>
+          ) : null}
+
           {showHint ? <p className={styles.hint}>{hintText}</p> : null}
 
           {registerEnabled && passwordEnabled ? (

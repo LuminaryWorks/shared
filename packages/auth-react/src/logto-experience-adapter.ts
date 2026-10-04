@@ -11,6 +11,7 @@ import {
   type ExperienceEmailSignUpSendCodeInput,
   type ExperienceEmailSignUpSendCodeResult,
   type ExperienceIdentifierType,
+  type ExperienceMfaTotpInput,
   type ExperiencePasswordSignInInput,
   type ExperiencePasswordSignInResult,
   type ExperiencePasswordSignUpInput,
@@ -40,6 +41,24 @@ function experienceUrl(apiBase: string, path: string): string {
   return `${apiBase.replace(/\/$/, "")}/api/experience${path}`;
 }
 
+export class ExperienceApiError extends Error {
+  readonly status: number;
+  readonly code: string;
+
+  constructor(status: number, code: string, message: string) {
+    super(message);
+    this.name = "ExperienceApiError";
+    this.status = status;
+    this.code = code;
+  }
+}
+
+const MFA_REQUIRED_CODE = "session.mfa.require_mfa_verification";
+
+export function isMfaVerificationRequired(error: unknown): boolean {
+  return error instanceof ExperienceApiError && error.code === MFA_REQUIRED_CODE;
+}
+
 async function experienceFetch<T>(apiBase: string, path: string, init: RequestInit): Promise<T> {
   const res = await fetch(experienceUrl(apiBase, path), {
     credentials: "include",
@@ -60,11 +79,10 @@ async function experienceFetch<T>(apiBase: string, path: string, init: RequestIn
     }
   }
   if (!res.ok) {
-    const msg =
-      data && typeof data === "object" && data !== null && "message" in data
-        ? String((data as { message: unknown }).message)
-        : `Experience API ${res.status}`;
-    throw new Error(msg);
+    const body = data && typeof data === "object" && data !== null ? (data as { code?: unknown; message?: unknown }) : null;
+    const code = typeof body?.code === "string" ? body.code : "";
+    const msg = typeof body?.message === "string" ? body.message : `Experience API ${res.status}`;
+    throw new ExperienceApiError(res.status, code, msg);
   }
   return data as T;
 }
@@ -192,21 +210,44 @@ export class LogtoExperienceAdapter implements LoginExperienceAdapter {
           body: JSON.stringify({ verificationId }),
         });
 
-        const submitted = await experienceFetch<{ redirectTo?: string }>(
-          apiBase,
-          "/submit",
-          {
-            method: "POST",
-            body: JSON.stringify({}),
-          },
-        );
-
-        return { redirectTo: submitted?.redirectTo, raw: submitted };
+        try {
+          const submitted = await experienceFetch<{ redirectTo?: string }>(
+            apiBase,
+            "/submit",
+            {
+              method: "POST",
+              body: JSON.stringify({}),
+            },
+          );
+          return { redirectTo: submitted?.redirectTo, raw: submitted };
+        } catch (error) {
+          if (isMfaVerificationRequired(error)) {
+            return { mfaRequired: true };
+          }
+          throw error;
+        }
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));
       }
     }
     throw lastError ?? new Error("Experience password sign-in failed");
+  }
+
+  /** Verify the user's existing authenticator code, then submit the interaction. */
+  async experienceVerifyTotp(input: ExperienceMfaTotpInput): Promise<ExperiencePasswordSignInResult> {
+    const code = input.code.trim();
+    if (!code) {
+      throw new Error("Authenticator code is required");
+    }
+    await experienceFetch(input.apiBase, "/verification/totp/verify", {
+      method: "POST",
+      body: JSON.stringify({ code }),
+    });
+    const submitted = await experienceFetch<{ redirectTo?: string }>(input.apiBase, "/submit", {
+      method: "POST",
+      body: JSON.stringify({}),
+    });
+    return { redirectTo: submitted?.redirectTo, raw: submitted };
   }
 
   /**
