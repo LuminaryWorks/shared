@@ -4,6 +4,12 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 export interface IdpDevProxyOptions {
   /** SPA origin used in discovery rewrite, e.g. http://localhost:3003 */
   spaOrigin: string;
+  /**
+   * When true, rewrite discovery / Location to `http(s)://{req.headers.host}`
+   * so `localhost` vs `127.0.0.1` (same port) stay same-origin for Headless cookies.
+   * Falls back to `spaOrigin` when Host is missing.
+   */
+  spaOriginFromRequest?: boolean;
   /** Upstream IdP origin (Logto or Auth Gateway), default http://localhost:3001 */
   target?: string;
   /** Canonical provider origin used by issuer and other preserved discovery fields. */
@@ -115,8 +121,30 @@ function trimTrailingSlash(value: string): string {
   return value.replace(/\/$/, "");
 }
 
+/** Resolve SPA origin for rewrite; prefer the browser Host when opted in. */
+export function resolveSpaOriginForRequest(
+  options: IdpDevProxyOptions,
+  req?: IncomingMessage,
+): string {
+  if (options.spaOriginFromRequest && req?.headers.host) {
+    const forwarded = String(req.headers["x-forwarded-proto"] || "")
+      .split(",")[0]
+      ?.trim();
+    const proto = forwarded === "https" || forwarded === "http" ? forwarded : "http";
+    return trimTrailingSlash(`${proto}://${req.headers.host}`);
+  }
+  return trimTrailingSlash(options.spaOrigin);
+}
+
 function providerOrigin(options: IdpDevProxyOptions): string {
   return trimTrailingSlash(options.upstreamOrigin || options.logtoOrigin || DEFAULT_LOGTO);
+}
+
+function withSpaOrigin(
+  options: IdpDevProxyOptions,
+  spaOrigin: string,
+): IdpDevProxyOptions {
+  return { ...options, spaOrigin: trimTrailingSlash(spaOrigin) };
 }
 
 function rewriteSources(options: IdpDevProxyOptions): string[] {
@@ -211,11 +239,13 @@ function applyRewrittenProxyBody(
   res: ServerResponse,
   options: IdpDevProxyOptions,
   body: Buffer,
+  req?: IncomingMessage,
 ): void {
+  const effective = withSpaOrigin(options, resolveSpaOriginForRequest(options, req));
   let buf = decompressIfNeeded(body, proxyRes.headers["content-encoding"] as string | undefined);
   const ct = String(proxyRes.headers["content-type"] || "");
   if (ct.includes("json")) {
-    buf = Buffer.from(rewriteOidcDiscoveryJson(buf.toString("utf8"), options), "utf8");
+    buf = Buffer.from(rewriteOidcDiscoveryJson(buf.toString("utf8"), effective), "utf8");
   }
 
   for (const [key, value] of Object.entries(proxyRes.headers)) {
@@ -232,7 +262,7 @@ function applyRewrittenProxyBody(
       continue;
     }
     if (key === "location" && typeof value === "string") {
-      res.setHeader("location", rewriteIdpLocation(value, options));
+      res.setHeader("location", rewriteIdpLocation(value, effective));
       continue;
     }
     if (value !== undefined) res.setHeader(key, value);
@@ -254,13 +284,13 @@ export function createIdpHttpProxy(options: IdpDevProxyOptions): HttpProxyLikeCo
   };
   const onProxyRes = (
     proxyRes: IncomingMessage,
-    _req: IncomingMessage,
+    req: IncomingMessage,
     res: ServerResponse,
   ) => {
     const chunks: Buffer[] = [];
     proxyRes.on("data", (c: Buffer) => chunks.push(c));
     proxyRes.on("end", () => {
-      applyRewrittenProxyBody(proxyRes, res, options, Buffer.concat(chunks));
+      applyRewrittenProxyBody(proxyRes, res, options, Buffer.concat(chunks), req);
     });
   };
   return {

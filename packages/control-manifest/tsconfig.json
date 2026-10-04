@@ -3,12 +3,19 @@
   "compilerOptions": {
     "outDir": "dist",
     "rootDir": "src",
-    // Nest/Node consumers load this package via CommonJS; source stays ES import/export.
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    "types": ["node"],
+    "types": [
+      "node"
+    ],
     "declaration": true
   },
-  "include": ["src/**/*"],
-  "exclude": ["src/**/*.spec.ts"]
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "src/**/*.spec.ts",
+    "node_modules",
+    "dist"
+  ]
 }
