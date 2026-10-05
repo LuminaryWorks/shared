@@ -10,6 +10,7 @@ export * from "./AuthGateProvider";
 export * from "./login-legal";
 export * from "./HeadlessLoginPanel";
 export * from "./login-labels";
+export * from "./preferred-locale";
 export * from "./LoginLanguageSwitcher";
 export * from "./LoginCanvas";
 export * from "./ReauthOverlay";

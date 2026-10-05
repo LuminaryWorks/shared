@@ -934,7 +934,7 @@ export function HeadlessLoginPanel({
             </div>
           ) : null}
 
-          {showHint ? <p className={styles.hint}>{hintText}</p> : null}
+          {showHint && hintText ? <p className={styles.hint}>{hintText}</p> : null}
 
           {registerEnabled && passwordEnabled ? (
             <p className={styles.switchMode}>
