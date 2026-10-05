@@ -24,10 +24,19 @@ $radius-sm: 4px;
   max-width: 400px;
   padding: 28px 28px 22px;
   border-radius: $radius-lg;
-  background: rgba(255, 255, 255, 0.96);
+  /* Subtle frost: page tone peeks through without washing out form contrast. */
+  background: rgba(255, 255, 255, 0.9);
+  -webkit-backdrop-filter: blur(14px) saturate(1.12);
+  backdrop-filter: blur(14px) saturate(1.12);
   color: $ink;
   box-shadow: 0 24px 64px rgba(15, 23, 42, 0.28);
   font-family: "Segoe UI", "PingFang SC", "Noto Sans SC", sans-serif;
+}
+
+@supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  .panel {
+    background: rgba(255, 255, 255, 0.96);
+  }
 }
 
 .brand {
