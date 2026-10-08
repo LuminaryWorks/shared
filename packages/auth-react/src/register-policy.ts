@@ -186,11 +186,18 @@ export function formatAllowedEmailDomains(
   if (policy.mode !== "allowlist") return null;
   const list = [...policy.allowlist].map((d) => d.toLowerCase()).filter(Boolean);
   if (!list.length) return null;
-  const max = options?.max ?? 16;
+  if (options?.max == null) return list.join(", ");
+  const max = options.max;
   const shown = list.slice(0, max);
   const rest = list.length - shown.length;
   const body = shown.join(", ");
   return rest > 0 ? `${body}, +${rest} more` : body;
+}
+
+/** Full allowlist for tooltips / info popovers (allowlist mode only). */
+export function listAllowedEmailDomains(policy: RegisterEmailPolicy): string[] {
+  if (policy.mode !== "allowlist") return [];
+  return [...policy.allowlist].map((d) => d.toLowerCase()).filter(Boolean);
 }
 
 /** Short policy note under the email field on the register form. */
