@@ -16,9 +16,14 @@ import {
 import { LogtoExperienceAdapter } from "./logto-experience-adapter";
 import { signInPopup, signInRedirect, prepareSignInRequestUrl } from "./oidc-client";
 import {
+  evaluateRegisterEmailField,
+  evaluateRegisterUsername,
+  registerDuplicateFieldFromError,
+} from "./register-field-validation";
+import {
   evaluateRegisterEmail,
   fetchRegisterEmailPolicy,
-  registerEmailDomainsHint,
+  listAllowedEmailDomains,
   registerEmailRejectionMessage,
   resolveRegisterEmailPolicy,
   type RegisterEmailPolicy,
@@ -71,6 +76,14 @@ export interface HeadlessLoginLabels {
   allowedDomainsOpen?: string;
   /** Shown when only disposable domains are blocked. */
   allowedDomainsBlocklist?: string;
+  /** Aria / title for the email-domain info control. */
+  allowedDomainsInfo?: string;
+  usernameInvalid?: string;
+  usernameTaken?: string;
+  emailInvalid?: string;
+  emailTaken?: string;
+  emailDomainNotAllowed?: string;
+  emailDisposable?: string;
   /**
    * Desktop/mobile system-browser social login: tell the user to finish in the browser
    * and return to the app (loopback / deep link callback).
@@ -204,8 +217,7 @@ const defaults: Required<HeadlessLoginLabels> = {
   submitGithub: "GitHub",
   socialDivider: "or",
   hint: "Social providers open directly. Password uses your LuminaryWorks account.",
-  registerHint:
-    "Email register needs a code (Gmail / Outlook / QQ / 163 / iCloud …). Username is an alternative. Prefer one-click? Use a social provider.",
+  registerHint: "Email needs a verification code. Username and email are both required.",
   cancel: "Cancel",
   experienceUnavailable: "Password sign-in is unavailable; use a social provider instead.",
   showPassword: "Show password",
@@ -225,6 +237,14 @@ const defaults: Required<HeadlessLoginLabels> = {
   allowedDomainsOpen: "Email registration is open for most providers.",
   allowedDomainsBlocklist:
     "Most email providers are accepted. Temporary / disposable addresses are blocked.",
+  allowedDomainsInfo: "Show all allowed email domains",
+  usernameInvalid:
+    "Username must start with a letter or underscore and use only letters, digits, and underscores.",
+  usernameTaken: "This username is already taken",
+  emailInvalid: "Enter a valid email address",
+  emailTaken: "This email is already registered",
+  emailDomainNotAllowed: "This email domain is not allowed for self-registration",
+  emailDisposable: "Temporary or disposable email addresses are not allowed",
   waitingExternalBrowser:
     "Finish signing in with your browser, then return to this app.",
   consentRequired: "Please agree to the terms before continuing.",
@@ -333,8 +353,9 @@ export function HeadlessLoginPanel({
   const labels = { ...defaults, ...loginLabels(locale), ...labelsProp };
   const configured = isIdpConfigured(config);
   const [panelMode, setPanelMode] = useState<"sign-in" | "register">("sign-in");
-  const [registerChannel, setRegisterChannel] = useState<"email" | "username">("email");
   const [identifier, setIdentifier] = useState(initialIdentifier ?? "");
+  const [registerEmail, setRegisterEmail] = useState("");
+  const [registerUsername, setRegisterUsername] = useState("");
   const hydratedIdentifier = useRef(false);
   useEffect(() => {
     if (hydratedIdentifier.current) return;
@@ -347,6 +368,9 @@ export function HeadlessLoginPanel({
   const [verificationCode, setVerificationCode] = useState("");
   const [emailVerificationId, setEmailVerificationId] = useState<string | null>(null);
   const [passwordVisible, setPasswordVisible] = useState(false);
+  const [emailFieldError, setEmailFieldError] = useState("");
+  const [usernameFieldError, setUsernameFieldError] = useState("");
+  const [checkingUsername, setCheckingUsername] = useState(false);
   const panelStyle: CSSProperties = {
     width: `min(100%, ${LOGIN_CARD_MAX_WIDTH}px)`,
     maxWidth: LOGIN_CARD_MAX_WIDTH,
@@ -385,7 +409,10 @@ export function HeadlessLoginPanel({
     experienceAdapter.capabilities.includes(LOGIN_EXPERIENCE_CAPABILITIES.passwordSignUp) &&
     typeof experienceAdapter.experiencePasswordSignUp === "function";
   const isRegister = panelMode === "register" && registerEnabled;
-  const useEmailRegister = isRegister && registerChannel === "email" && emailRegisterEnabled;
+  /** Prefer email+code path whenever available; username is collected alongside. */
+  const useEmailRegister = isRegister && emailRegisterEnabled;
+  const useUsernameOnlyRegister =
+    isRegister && !emailRegisterEnabled && usernameRegisterEnabled;
 
   // Browser back from IdP restores bfcache with loading still set → "…".
   useEffect(() => {
@@ -528,6 +555,74 @@ export function HeadlessLoginPanel({
     window.location.assign(redirectTo);
   };
 
+  const emailRejectionLabel = (decision: ReturnType<typeof evaluateRegisterEmail>): string => {
+    if (decision.ok) return "";
+    if (decision.reason === "invalid") return labels.emailInvalid;
+    if (decision.reason === "disposable") return labels.emailDisposable;
+    return labels.emailDomainNotAllowed;
+  };
+
+  const validateRegisterEmailBlur = () => {
+    if (!useEmailRegister) return true;
+    const decision = evaluateRegisterEmailField(registerEmail, emailPolicy);
+    if (!decision.ok) {
+      if (decision.reason === "empty") {
+        setEmailFieldError(labels.emailInvalid);
+      } else if (decision.reason === "invalid") {
+        setEmailFieldError(labels.emailInvalid);
+      } else if (decision.reason === "disposable") {
+        setEmailFieldError(labels.emailDisposable);
+      } else {
+        setEmailFieldError(labels.emailDomainNotAllowed);
+      }
+      return false;
+    }
+    setEmailFieldError("");
+    return true;
+  };
+
+  const validateRegisterUsernameBlur = async () => {
+    if (!isRegister) return true;
+    const decision = evaluateRegisterUsername(registerUsername);
+    if (!decision.ok) {
+      setUsernameFieldError(
+        decision.reason === "empty" ? labels.usernameInvalid : labels.usernameInvalid,
+      );
+      return false;
+    }
+    setUsernameFieldError("");
+    if (
+      emailVerificationId ||
+      !experienceAdapter.checkRegisterUsernameAvailable ||
+      !config.experienceApiBase?.trim()
+    ) {
+      return true;
+    }
+    setCheckingUsername(true);
+    try {
+      const result = await experienceAdapter.checkRegisterUsernameAvailable({
+        apiBase: config.experienceApiBase.trim(),
+        username: registerUsername.trim(),
+        issuer: config.issuer,
+        clientId: config.clientId,
+        redirectUri: config.redirectUri,
+        audience: config.audience,
+        scopes: config.scopes,
+        returnUrl,
+      });
+      if (!result.available) {
+        setUsernameFieldError(labels.usernameTaken);
+        return false;
+      }
+      return true;
+    } catch {
+      // Soft-fail: format already passed; submit still catches duplicates.
+      return true;
+    } finally {
+      setCheckingUsername(false);
+    }
+  };
+
   const runPassword = async (event: FormEvent) => {
     event.preventDefault();
     if (!configured) return;
@@ -545,15 +640,21 @@ export function HeadlessLoginPanel({
           throw new Error(labels.passwordMismatch);
         }
         if (useEmailRegister) {
+          if (!validateRegisterEmailBlur()) {
+            throw new Error(emailFieldError || labels.emailInvalid);
+          }
+          const usernameOk = await validateRegisterUsernameBlur();
+          if (!usernameOk) {
+            throw new Error(usernameFieldError || labels.usernameInvalid);
+          }
           if (!experienceAdapter.experienceEmailPasswordSignUp || !emailVerificationId) {
             throw new Error("Send and enter the email verification code first");
           }
-          const decision = evaluateRegisterEmail(identifier.trim(), emailPolicy);
-          if (!decision.ok) throw new Error(registerEmailRejectionMessage(decision));
           const result = await experienceAdapter.experienceEmailPasswordSignUp({
             apiBase,
-            identifier: identifier.trim(),
-            email: identifier.trim(),
+            identifier: registerEmail.trim(),
+            email: registerEmail.trim(),
+            username: registerUsername.trim(),
             password,
             code: verificationCode,
             verificationId: emailVerificationId,
@@ -571,12 +672,16 @@ export function HeadlessLoginPanel({
           }
           throw new Error("Experience API did not return redirectTo");
         }
-        if (!usernameRegisterEnabled || !experienceAdapter.experiencePasswordSignUp) {
+        if (!useUsernameOnlyRegister || !experienceAdapter.experiencePasswordSignUp) {
           throw new Error(labels.experienceUnavailable);
+        }
+        const usernameOk = await validateRegisterUsernameBlur();
+        if (!usernameOk) {
+          throw new Error(usernameFieldError || labels.usernameInvalid);
         }
         const result = await experienceAdapter.experiencePasswordSignUp({
           apiBase,
-          identifier: identifier.trim(),
+          identifier: registerUsername.trim(),
           password,
           captchaToken,
           issuer: config.issuer,
@@ -624,6 +729,9 @@ export function HeadlessLoginPanel({
       }
       throw new Error("Experience API did not return redirectTo");
     } catch (e) {
+      const dup = registerDuplicateFieldFromError(e);
+      if (dup === "email") setEmailFieldError(labels.emailTaken);
+      if (dup === "username") setUsernameFieldError(labels.usernameTaken);
       setError(e instanceof Error ? e.message : String(e));
       setLoading(null);
     }
@@ -657,6 +765,7 @@ export function HeadlessLoginPanel({
   const runSendCode = async () => {
     if (!configured || !useEmailRegister) return;
     if (!ensureConsent()) return;
+    if (!validateRegisterEmailBlur()) return;
     setError("");
     setLoading("send-code");
     try {
@@ -664,9 +773,9 @@ export function HeadlessLoginPanel({
       if (!apiBase || !experienceAdapter.sendRegisterEmailCode) {
         throw new Error(labels.experienceUnavailable);
       }
-      const email = identifier.trim();
+      const email = registerEmail.trim();
       const decision = evaluateRegisterEmail(email, emailPolicy);
-      if (!decision.ok) throw new Error(registerEmailRejectionMessage(decision));
+      if (!decision.ok) throw new Error(emailRejectionLabel(decision) || registerEmailRejectionMessage(decision));
       const captchaToken = getCaptchaToken ? await getCaptchaToken() : undefined;
       const sent = await experienceAdapter.sendRegisterEmailCode({
         apiBase,
@@ -682,6 +791,8 @@ export function HeadlessLoginPanel({
       });
       setEmailVerificationId(sent.verificationId);
     } catch (e) {
+      const dup = registerDuplicateFieldFromError(e);
+      if (dup === "email") setEmailFieldError(labels.emailTaken);
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setLoading(null);
@@ -694,37 +805,64 @@ export function HeadlessLoginPanel({
     setConfirmPassword("");
     setVerificationCode("");
     setEmailVerificationId(null);
+    setEmailFieldError("");
+    setUsernameFieldError("");
+    if (next === "register") {
+      setRegisterEmail("");
+      setRegisterUsername(identifier.includes("@") ? "" : identifier.trim());
+    }
   };
 
-  const busy = loading !== null;
-  const showSocial = socialEnabled && connectors.length > 0;
-  const showHint = Boolean(labelsProp?.hint) || showSocial || isRegister;
-  const formReady =
-    Boolean(identifier.trim()) &&
-    Boolean(password) &&
-    (!isRegister || Boolean(confirmPassword)) &&
-    (!useEmailRegister || (Boolean(verificationCode.trim()) && Boolean(emailVerificationId)));
+  const busy = loading !== null || checkingUsername;
+  const showSocial = !isRegister && socialEnabled && connectors.length > 0;
+  const showHint = !isRegister && (Boolean(labelsProp?.hint) || showSocial);
+  const formReady = isRegister
+    ? Boolean(password) &&
+      Boolean(confirmPassword) &&
+      Boolean(registerUsername.trim()) &&
+      !usernameFieldError &&
+      (useUsernameOnlyRegister ||
+        (Boolean(registerEmail.trim()) &&
+          !emailFieldError &&
+          Boolean(verificationCode.trim()) &&
+          Boolean(emailVerificationId)))
+    : Boolean(identifier.trim()) && Boolean(password);
   const titleText = mfaPending ? labels.mfaTitle : isRegister ? labels.registerTitle : labels.title;
   const subtitleText = mfaPending
     ? labels.mfaSubtitle
     : isRegister
       ? labels.registerSubtitle
       : labels.subtitle;
-  const identifierPlaceholder = isRegister
-    ? useEmailRegister
-      ? labels.emailPlaceholder
-      : labels.registerIdentifierPlaceholder
-    : labels.identifierPlaceholder;
   const submitLabel = isRegister ? labels.submitRegister : labels.submitPassword;
-  const hintText = isRegister ? labels.registerHint : labels.hint;
-  const domainsHint =
-    useEmailRegister
-      ? registerEmailDomainsHint(emailPolicy, {
-          allowedDomainsPrefix: labels.allowedDomainsPrefix,
-          allowedDomainsOpen: labels.allowedDomainsOpen,
-          allowedDomainsBlocklist: labels.allowedDomainsBlocklist,
-        })
-      : null;
+  const hintText = labels.hint;
+  const allowedDomainList = useEmailRegister ? listAllowedEmailDomains(emailPolicy) : [];
+  const domainsTipLabel =
+    allowedDomainList.length > 0
+      ? `${labels.allowedDomainsPrefix}: ${allowedDomainList.join(", ")}`
+      : emailPolicy.mode === "blocklist" || (emailPolicy.mode === "off" && emailPolicy.blocklist.length > 0)
+        ? labels.allowedDomainsBlocklist
+        : labels.allowedDomainsOpen;
+
+  const consentBlock =
+    consent || (consentDocuments && consentDocuments.length > 0) || consentBlocked ? (
+      <div className={cx(styles.consent, consentBlocked && styles.consentInvalid)}>
+        {consent ? (
+          consent
+        ) : consentDocuments && consentDocuments.length > 0 ? (
+          <p className={styles.consentLinks}>
+            {consentDocuments.map((doc, index) => (
+              <span key={doc.id}>
+                {index > 0 ? " · " : null}
+                <a href={doc.href} target="_blank" rel="noopener noreferrer">
+                  {doc.label}
+                </a>
+              </span>
+            ))}
+          </p>
+        ) : null}
+        {consentBlocked ? <p className={styles.consentError}>{labels.consentRequired}</p> : null}
+      </div>
+    ) : null;
 
   return (
     <div className={cx(styles.panel, className)} style={panelStyle}>
@@ -773,95 +911,131 @@ export function HeadlessLoginPanel({
             </form>
           ) : passwordEnabled ? (
             <form onSubmit={(e) => void runPassword(e)} className={styles.form}>
-              {isRegister && emailRegisterEnabled && usernameRegisterEnabled ? (
-                <div className={styles.channelTabs} role="tablist" aria-label="Register method">
+              {isRegister && registerEnabled ? (
+                <p className={styles.switchModeTop}>
                   <button
                     type="button"
-                    role="tab"
-                    className={cx(
-                      styles.channelTab,
-                      registerChannel === "email" && styles.channelTabActive,
-                    )}
-                    aria-selected={registerChannel === "email"}
+                    className={styles.switchModeBtn}
                     disabled={busy}
-                    onClick={() => {
-                      setRegisterChannel("email");
-                      setEmailVerificationId(null);
-                      setVerificationCode("");
-                      setError("");
-                    }}
+                    onClick={() => switchPanelMode("sign-in")}
                   >
-                    {labels.registerWithEmail}
+                    {labels.loginLink}
                   </button>
-                  <button
-                    type="button"
-                    role="tab"
-                    className={cx(
-                      styles.channelTab,
-                      registerChannel === "username" && styles.channelTabActive,
-                    )}
-                    aria-selected={registerChannel === "username"}
-                    disabled={busy}
-                    onClick={() => {
-                      setRegisterChannel("username");
-                      setEmailVerificationId(null);
-                      setVerificationCode("");
-                      setError("");
-                    }}
-                  >
-                    {labels.registerWithUsername}
-                  </button>
-                </div>
-              ) : null}
-              <input
-                type={useEmailRegister ? "email" : "text"}
-                name="identifier"
-                autoComplete={isRegister ? "username" : "username"}
-                placeholder={identifierPlaceholder}
-                value={identifier}
-                onChange={(e) => {
-                  const next = e.target.value;
-                  setIdentifier(next);
-                  onIdentifierChange?.(next);
-                  if (useEmailRegister) {
-                    setEmailVerificationId(null);
-                  }
-                }}
-                className={styles.input}
-                disabled={busy}
-              />
-              {domainsHint ? (
-                <p className={styles.domainsHint} data-testid="register-allowed-domains">
-                  {domainsHint}
                 </p>
               ) : null}
-              {useEmailRegister ? (
-                <div className={styles.codeRow}>
-                  <input
-                    type="text"
-                    name="verificationCode"
-                    inputMode="numeric"
-                    autoComplete="one-time-code"
-                    placeholder={labels.verificationCodePlaceholder}
-                    value={verificationCode}
-                    onChange={(e) => setVerificationCode(e.target.value)}
-                    className={cx(styles.input, styles.codeInput)}
-                    disabled={busy}
-                  />
-                  <button
-                    type="button"
-                    className={styles.secondaryBtn}
-                    disabled={busy || !identifier.trim()}
-                    onClick={() => void runSendCode()}
-                  >
-                    {loading === "send-code"
-                      ? "…"
-                      : emailVerificationId
-                        ? labels.resendCode
-                        : labels.sendCode}
-                  </button>
-                </div>
-              ) : null}
+              {isRegister ? (
+                <>
+                  {useEmailRegister ? (
+                    <>
+                      <div className={styles.fieldBlock}>
+                        <div className={styles.emailRow}>
+                          <input
+                            type="email"
+                            name="registerEmail"
+                            autoComplete="email"
+                            placeholder={labels.emailPlaceholder}
+                            value={registerEmail}
+                            onChange={(e) => {
+                              setRegisterEmail(e.target.value);
+                              setEmailFieldError("");
+                              setEmailVerificationId(null);
+                            }}
+                            onBlur={() => {
+                              validateRegisterEmailBlur();
+                            }}
+                            className={cx(styles.input, emailFieldError && styles.inputInvalid)}
+                            disabled={busy}
+                            aria-invalid={Boolean(emailFieldError)}
+                          />
+                          <span className={styles.domainInfoWrap}>
+                            <button
+                              type="button"
+                              className={styles.domainInfoBtn}
+                              aria-label={labels.allowedDomainsInfo}
+                              title={domainsTipLabel}
+                              disabled={busy}
+                            >
+                              i
+                            </button>
+                            <span className={styles.domainInfoPopover} role="tooltip">
+                              {domainsTipLabel}
+                            </span>
+                          </span>
+                        </div>
+                        {emailFieldError ? (
+                          <p className={styles.fieldError} data-testid="register-email-error">
+                            {emailFieldError}
+                          </p>
+                        ) : null}
+                      </div>
+                      <div className={styles.codeRow}>
+                        <input
+                          type="text"
+                          name="verificationCode"
+                          inputMode="numeric"
+                          autoComplete="one-time-code"
+                          placeholder={labels.verificationCodePlaceholder}
+                          value={verificationCode}
+                          onChange={(e) => setVerificationCode(e.target.value)}
+                          className={cx(styles.input, styles.codeInput)}
+                          disabled={busy}
+                        />
+                        <button
+                          type="button"
+                          className={styles.secondaryBtn}
+                          disabled={busy || !registerEmail.trim()}
+                          onClick={() => void runSendCode()}
+                        >
+                          {loading === "send-code"
+                            ? "…"
+                            : emailVerificationId
+                              ? labels.resendCode
+                              : labels.sendCode}
+                        </button>
+                      </div>
+                    </>
+                  ) : null}
+                  <div className={styles.fieldBlock}>
+                    <input
+                      type="text"
+                      name="registerUsername"
+                      autoComplete="username"
+                      placeholder={labels.registerIdentifierPlaceholder}
+                      value={registerUsername}
+                      onChange={(e) => {
+                        setRegisterUsername(e.target.value);
+                        setUsernameFieldError("");
+                      }}
+                      onBlur={() => {
+                        void validateRegisterUsernameBlur();
+                      }}
+                      className={cx(styles.input, usernameFieldError && styles.inputInvalid)}
+                      disabled={busy}
+                      aria-invalid={Boolean(usernameFieldError)}
+                    />
+                    {usernameFieldError ? (
+                      <p className={styles.fieldError} data-testid="register-username-error">
+                        {usernameFieldError}
+                      </p>
+                    ) : null}
+                  </div>
+                </>
+              ) : (
+                <input
+                  type="text"
+                  name="identifier"
+                  autoComplete="username"
+                  placeholder={labels.identifierPlaceholder}
+                  value={identifier}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    setIdentifier(next);
+                    onIdentifierChange?.(next);
+                  }}
+                  className={styles.input}
+                  disabled={busy}
+                />
+              )}
               <div className={styles.passwordField}>
                 <input
                   type={passwordVisible ? "text" : "password"}
@@ -898,12 +1072,14 @@ export function HeadlessLoginPanel({
                   />
                 </div>
               ) : null}
+              {consentBlock}
               <button type="submit" className={styles.primaryBtn} disabled={busy || !formReady}>
                 {loading === "password" ? "…" : submitLabel}
               </button>
             </form>
           ) : (
             <div className={styles.form}>
+              {consentBlock}
               <button
                 type="button"
                 className={styles.primaryBtn}
@@ -914,37 +1090,18 @@ export function HeadlessLoginPanel({
               </button>
             </div>
           )}
-          {consent || (consentDocuments && consentDocuments.length > 0) || consentBlocked ? (
-            <div className={cx(styles.consent, consentBlocked && styles.consentInvalid)}>
-              {consent ? (
-                consent
-              ) : consentDocuments && consentDocuments.length > 0 ? (
-                <p className={styles.consentLinks}>
-                  {consentDocuments.map((doc, index) => (
-                    <span key={doc.id}>
-                      {index > 0 ? " · " : null}
-                      <a href={doc.href} target="_blank" rel="noopener noreferrer">
-                        {doc.label}
-                      </a>
-                    </span>
-                  ))}
-                </p>
-              ) : null}
-              {consentBlocked ? <p className={styles.consentError}>{labels.consentRequired}</p> : null}
-            </div>
-          ) : null}
 
           {showHint && hintText ? <p className={styles.hint}>{hintText}</p> : null}
 
-          {registerEnabled && passwordEnabled ? (
+          {!isRegister && registerEnabled && passwordEnabled ? (
             <p className={styles.switchMode}>
               <button
                 type="button"
                 className={styles.switchModeBtn}
                 disabled={busy}
-                onClick={() => switchPanelMode(isRegister ? "sign-in" : "register")}
+                onClick={() => switchPanelMode("register")}
               >
-                {isRegister ? labels.loginLink : labels.registerLink}
+                {labels.registerLink}
               </button>
             </p>
           ) : null}

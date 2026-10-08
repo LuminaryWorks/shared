@@ -29,12 +29,15 @@ test("register email mode off still blocks disposable hosts", () => {
 });
 
 test("formatAllowedEmailDomains lists allowlist for the register hint", async () => {
-  const { formatAllowedEmailDomains, registerEmailDomainsHint } = await import("../dist/index.js");
+  const { formatAllowedEmailDomains, listAllowedEmailDomains, registerEmailDomainsHint } =
+    await import("../dist/index.js");
   const policy = resolveRegisterEmailPolicy({
     mode: "allowlist",
     allowlist: ["gmail.com", "qq.com", "outlook.com"],
   });
   assert.equal(formatAllowedEmailDomains(policy), "gmail.com, qq.com, outlook.com");
+  assert.deepEqual(listAllowedEmailDomains(policy), ["gmail.com", "qq.com", "outlook.com"]);
   assert.match(registerEmailDomainsHint(policy) || "", /Allowed email domains: gmail\.com/);
   assert.equal(formatAllowedEmailDomains(resolveRegisterEmailPolicy({ mode: "off" })), null);
+  assert.deepEqual(listAllowedEmailDomains(resolveRegisterEmailPolicy({ mode: "off" })), []);
 });

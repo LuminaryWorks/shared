@@ -83,6 +83,8 @@ export interface ExperienceEmailSignUpCompleteInput {
   password: string;
   code: string;
   verificationId: string;
+  /** Optional username fulfilled via Experience `/profile` during email register. */
+  username?: string;
   identifier?: string;
   captchaToken?: string;
   issuer?: string;
@@ -91,6 +93,21 @@ export interface ExperienceEmailSignUpCompleteInput {
   audience?: string;
   scopes?: string;
   returnUrl?: string;
+}
+
+export interface ExperienceUsernameAvailabilityInput {
+  apiBase: string;
+  username: string;
+  issuer?: string;
+  clientId?: string;
+  redirectUri?: string;
+  audience?: string;
+  scopes?: string;
+  returnUrl?: string;
+}
+
+export interface ExperienceUsernameAvailabilityResult {
+  available: boolean;
 }
 
 export interface ExperienceSocialConnector {
@@ -138,6 +155,13 @@ export interface LoginExperienceAdapter {
   experienceEmailPasswordSignUp?(
     input: ExperienceEmailSignUpCompleteInput,
   ): Promise<ExperiencePasswordSignUpResult>;
+  /**
+   * Probe whether a username is free (Register `/profile`).
+   * May briefly touch the Experience interaction cookie — call before send-code when possible.
+   */
+  checkRegisterUsernameAvailable?(
+    input: ExperienceUsernameAvailabilityInput,
+  ): Promise<ExperienceUsernameAvailabilityResult>;
   fetchSocialConnectors?(
     input: FetchSocialConnectorsInput,
   ): Promise<ExperienceSocialConnector[]>;

@@ -17,6 +17,8 @@ import {
   type ExperiencePasswordSignUpInput,
   type ExperiencePasswordSignUpResult,
   type ExperienceSocialConnector,
+  type ExperienceUsernameAvailabilityInput,
+  type ExperienceUsernameAvailabilityResult,
   type FetchSocialConnectorsInput,
   type LoginExperienceAdapter,
   type LoginExperienceCapability,
@@ -355,13 +357,77 @@ export class LogtoExperienceAdapter implements LoginExperienceAdapter {
     return { verificationId: sent.verificationId };
   }
 
+  /**
+   * Soft-check username availability via Register `/profile`.
+   * Resets the interaction afterward so send-code can start a clean Register.
+   */
+  async checkRegisterUsernameAvailable(
+    input: ExperienceUsernameAvailabilityInput,
+  ): Promise<ExperienceUsernameAvailabilityResult> {
+    const username = input.username.trim();
+    if (!isLogtoRegisterUsername(username)) {
+      return { available: false };
+    }
+
+    await bootstrapOidcInteraction({
+      apiBase: input.apiBase,
+      identifier: username,
+      password: "",
+      issuer: input.issuer,
+      clientId: input.clientId,
+      redirectUri: input.redirectUri,
+      audience: input.audience,
+      scopes: input.scopes,
+      returnUrl: input.returnUrl,
+    });
+
+    await experienceFetch(input.apiBase, "", {
+      method: "PUT",
+      body: JSON.stringify({ interactionEvent: "Register" }),
+    });
+
+    try {
+      await experienceFetch(input.apiBase, "/profile", {
+        method: "POST",
+        body: JSON.stringify({ type: "username", value: username }),
+      });
+    } catch (error) {
+      if (error instanceof ExperienceApiError && /username_already_in_use/i.test(error.code)) {
+        return { available: false };
+      }
+      const msg = error instanceof Error ? error.message : String(error);
+      if (/username_already_in_use|username.*already|username.*in use/i.test(msg)) {
+        return { available: false };
+      }
+      throw error instanceof Error ? error : new Error(msg);
+    } finally {
+      // Drop the probe profile so the next send-code / sign-up starts clean.
+      try {
+        await experienceFetch(input.apiBase, "", {
+          method: "PUT",
+          body: JSON.stringify({ interactionEvent: "Register" }),
+        });
+      } catch {
+        /* ignore reset failures */
+      }
+    }
+
+    return { available: true };
+  }
+
   async experienceEmailPasswordSignUp(
     input: ExperienceEmailSignUpCompleteInput,
   ): Promise<ExperiencePasswordSignUpResult> {
     const email = (input.email || input.identifier || "").trim().toLowerCase();
+    const username = input.username?.trim() ?? "";
     const decision = evaluateRegisterEmail(email, this.emailPolicy);
     if (!decision.ok) {
       throw new Error(registerEmailRejectionMessage(decision));
+    }
+    if (username && !isLogtoRegisterUsername(username)) {
+      throw new Error(
+        "Username must start with a letter or underscore and use only letters, digits, and underscores.",
+      );
     }
     if (!input.password || input.password.length < 8) {
       throw new Error("Password must be at least 8 characters");
@@ -395,12 +461,19 @@ export class LogtoExperienceAdapter implements LoginExperienceAdapter {
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       if (!/missing_profile/i.test(msg)) {
-        // Logto returns missing_profile when password is still required — continue.
+        // Logto returns missing_profile when password/username are still required — continue.
         // Other errors (already in use, etc.) must surface.
         if (!/422|password|profile/i.test(msg)) {
           throw error instanceof Error ? error : new Error(msg);
         }
       }
+    }
+
+    if (username) {
+      await experienceFetch(input.apiBase, "/profile", {
+        method: "POST",
+        body: JSON.stringify({ type: "username", value: username }),
+      });
     }
 
     await experienceFetch(input.apiBase, "/profile", {

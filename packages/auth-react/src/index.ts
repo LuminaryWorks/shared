@@ -16,3 +16,4 @@ export * from "./LoginCanvas";
 export * from "./ReauthOverlay";
 export * from "./post-login-path";
 export * from "./register-policy";
+export * from "./register-field-validation";
