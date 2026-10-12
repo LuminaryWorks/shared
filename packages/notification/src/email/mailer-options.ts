@@ -40,7 +40,8 @@ export function buildMailerOptions(
     socketTimeout: 60_000,
     tls: {
       minVersion: "TLSv1.2" as const,
-      servername: transport.host,
+      servername: transport.tlsServername || transport.host,
+      rejectUnauthorized: transport.rejectUnauthorized ?? true,
     },
     auth: transport.user
       ? {

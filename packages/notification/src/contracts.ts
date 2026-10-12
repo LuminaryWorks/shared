@@ -14,6 +14,10 @@ export interface SmtpTransportOptions {
   requireTLS?: boolean;
   user?: string;
   pass?: string;
+  /** Default true. Set false only for a self-signed submission certificate. */
+  rejectUnauthorized?: boolean;
+  /** TLS SNI when host is an IP address. */
+  tlsServername?: string;
 }
 
 export interface EmailDefaults {

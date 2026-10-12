@@ -56,18 +56,18 @@ export function createUserManager(config: LuminaryIdpConfig): UserManager {
 }
 
 /**
- * When Experience/Gateway base differs from the IdP issuer origin, fetch OIDC discovery
- * via the gateway (CORS) while keeping `authority` = Logto issuer (JWT `iss`).
+ * OIDC discovery must use the real issuer (login.*) so authorize /direct/social
+ * run where Logto ENDPOINT and experience assets live.
+ *
+ * Same-origin `experienceApiBase` is only for Experience API cookies. Fetching
+ * discovery through the SPA proxy used to rewrite authorization_endpoint onto
+ * the product host (via X-Forwarded-Host), leaving Google/GitHub stuck on a
+ * blank `/direct/social/*` page (product `/assets` ≠ Logto JS).
+ *
+ * Issuer discovery is CORS-enabled for product origins; JWT `iss` stays Logto.
  */
-function resolveOidcMetadataUrl(config: LuminaryIdpConfig): string | undefined {
-  const proxyBase = config.experienceApiBase?.replace(/\/$/, "");
-  if (!proxyBase) return undefined;
-  try {
-    if (new URL(proxyBase).origin === new URL(config.issuer).origin) return undefined;
-  } catch {
-    return undefined;
-  }
-  return `${proxyBase}/oidc/.well-known/openid-configuration`;
+function resolveOidcMetadataUrl(_config: LuminaryIdpConfig): string | undefined {
+  return undefined;
 }
 
 export function resetUserManager(): void {

@@ -7,7 +7,7 @@ import {
   resolveRegisterEmailPolicy,
 } from "../dist/index.js";
 
-test("register email allowlist accepts consumer providers and rejects games/disposable", () => {
+test("register email allowlist accepts consumer providers and rejects other domains", () => {
   const policy = resolveRegisterEmailPolicy({ mode: "allowlist" });
   assert.equal(evaluateRegisterEmail("a@gmail.com", policy).ok, true);
   assert.equal(evaluateRegisterEmail("a@qq.com", policy).ok, true);
@@ -21,11 +21,16 @@ test("register email allowlist accepts consumer providers and rejects games/disp
   );
 });
 
-test("register email mode off still blocks disposable hosts", () => {
+test("register email mode off accepts any email shape, including disposable hosts", () => {
   const policy = resolveRegisterEmailPolicy({ mode: "off" });
   assert.equal(normalizeRegisterEmailMode("off"), "off");
+  assert.equal(normalizeRegisterEmailMode(undefined), "off");
   assert.equal(evaluateRegisterEmail("a@corp.example", policy).ok, true);
-  assert.equal(evaluateRegisterEmail("a@yopmail.com", policy).ok, false);
+  assert.equal(evaluateRegisterEmail("a@yopmail.com", policy).ok, true);
+  assert.equal(evaluateRegisterEmail("not-an-email", policy).ok, false);
+  assert.equal(evaluateRegisterEmail(`${"a".repeat(20)}@example.com`, policy).ok, true);
+  assert.equal(evaluateRegisterEmail(`${"a".repeat(60)}@example.com`, policy).ok, false);
+  assert.equal(policy.codeCooldownSec, 120);
 });
 
 test("formatAllowedEmailDomains lists allowlist for the register hint", async () => {
@@ -40,4 +45,5 @@ test("formatAllowedEmailDomains lists allowlist for the register hint", async ()
   assert.match(registerEmailDomainsHint(policy) || "", /Allowed email domains: gmail\.com/);
   assert.equal(formatAllowedEmailDomains(resolveRegisterEmailPolicy({ mode: "off" })), null);
   assert.deepEqual(listAllowedEmailDomains(resolveRegisterEmailPolicy({ mode: "off" })), []);
+  assert.equal(registerEmailDomainsHint(resolveRegisterEmailPolicy({ mode: "off" })), null);
 });

@@ -13,8 +13,14 @@ import {
   type LoginExperienceAdapter,
   type SocialSignInRequest,
 } from "./login-experience-adapter";
-import { LogtoExperienceAdapter } from "./logto-experience-adapter";
+import { ExperienceApiError, LogtoExperienceAdapter } from "./logto-experience-adapter";
 import { signInPopup, signInRedirect, prepareSignInRequestUrl } from "./oidc-client";
+import {
+  isRegisterPasswordLength,
+  isRegisterPasswordTooSimple,
+  isRegisterVerificationCode,
+  REGISTER_FIELD_LIMITS,
+} from "./register-field-limits";
 import {
   evaluateRegisterEmailField,
   evaluateRegisterUsername,
@@ -28,6 +34,7 @@ import {
   resolveRegisterEmailPolicy,
   type RegisterEmailPolicy,
 } from "./register-policy";
+import { toLoginErrorLine, type LoginErrorContext } from "./login-error";
 import { loginLabels } from "./login-labels";
 import type { LoginLegalDocument } from "./login-legal";
 import { isIdpConfigured, type LuminaryAuthSession, type LuminaryIdpConfig } from "./types";
@@ -62,6 +69,16 @@ export interface HeadlessLoginLabels {
   /** Switch link when on register: "Already have an account? Sign in" */
   loginLink?: string;
   passwordMismatch?: string;
+  /** Register password outside 8–32 characters. */
+  passwordLength?: string;
+  /** Register password is letters-only, digits-only, sequential, or a common password. */
+  passwordSimple?: string;
+  /** Verification email could not be sent. One line, no provider detail. */
+  codeSendFailed?: string;
+  /** Sign-in or register failed for a reason we should not print raw. */
+  actionFailed?: string;
+  /** Register email code is not 6 digits. */
+  codeInvalid?: string;
   registerTitle?: string;
   registerSubtitle?: string;
   registerWithEmail?: string;
@@ -70,11 +87,15 @@ export interface HeadlessLoginLabels {
   verificationCodePlaceholder?: string;
   sendCode?: string;
   resendCode?: string;
+  /** Accessible name while the send-code request is in flight. */
+  sendingCode?: string;
+  /** Accessible name during the resend wait. `{{seconds}}` is the remaining count. */
+  codeResendIn?: string;
   /** Prefix before the allowlisted domain list, e.g. "Allowed email domains". */
   allowedDomainsPrefix?: string;
-  /** Shown when mode is off / unrestricted (aside from disposable blocklist). */
+  /** Unused when registration accepts any email-shaped address. Kept for older callers. */
   allowedDomainsOpen?: string;
-  /** Shown when only disposable domains are blocked. */
+  /** Unused when registration accepts any email-shaped address. Kept for older callers. */
   allowedDomainsBlocklist?: string;
   /** Aria / title for the email-domain info control. */
   allowedDomainsInfo?: string;
@@ -225,6 +246,12 @@ const defaults: Required<HeadlessLoginLabels> = {
   registerLink: "Create an account",
   loginLink: "Already have an account? Sign in",
   passwordMismatch: "Passwords do not match",
+  passwordLength: "Password must be 8–32 characters",
+  passwordSimple:
+    "Password is too simple. Use both letters and digits, and avoid repeats or sequences.",
+  codeSendFailed: "The verification code could not be sent. Try again in a moment.",
+  actionFailed: "That didn't work. Try again in a moment.",
+  codeInvalid: "Enter the 6-digit verification code",
   registerTitle: "Create account",
   registerSubtitle: "Create your LuminaryWorks unified account",
   registerWithEmail: "Email",
@@ -233,15 +260,17 @@ const defaults: Required<HeadlessLoginLabels> = {
   verificationCodePlaceholder: "Verification code",
   sendCode: "Send code",
   resendCode: "Resend code",
+  sendingCode: "Sending code",
+  codeResendIn: "Resend in {{seconds}} seconds",
   allowedDomainsPrefix: "Allowed email domains",
   allowedDomainsOpen: "Email registration is open for most providers.",
   allowedDomainsBlocklist:
     "Most email providers are accepted. Temporary / disposable addresses are blocked.",
   allowedDomainsInfo: "Show all allowed email domains",
   usernameInvalid:
-    "Username must start with a letter or underscore and use only letters, digits, and underscores.",
+    "Username must be 3–20 characters, start with a letter or underscore, and use only letters, digits, and underscores.",
   usernameTaken: "This username is already taken",
-  emailInvalid: "Enter a valid email address",
+  emailInvalid: "Enter a valid email address (6–64 characters)",
   emailTaken: "This email is already registered",
   emailDomainNotAllowed: "This email domain is not allowed for self-registration",
   emailDisposable: "Temporary or disposable email addresses are not allowed",
@@ -351,6 +380,15 @@ export function HeadlessLoginPanel({
     }
   }, [emailPolicy, experienceAdapter]);
   const labels = { ...defaults, ...loginLabels(locale), ...labelsProp };
+  const showError = (error: unknown, context: LoginErrorContext) => {
+    setError(
+      toLoginErrorLine(
+        error,
+        { codeSendFailed: labels.codeSendFailed, actionFailed: labels.actionFailed },
+        context,
+      ),
+    );
+  };
   const configured = isIdpConfigured(config);
   const [panelMode, setPanelMode] = useState<"sign-in" | "register">("sign-in");
   const [identifier, setIdentifier] = useState(initialIdentifier ?? "");
@@ -367,6 +405,9 @@ export function HeadlessLoginPanel({
   const [confirmPassword, setConfirmPassword] = useState("");
   const [verificationCode, setVerificationCode] = useState("");
   const [emailVerificationId, setEmailVerificationId] = useState<string | null>(null);
+  const [sendingCode, setSendingCode] = useState(false);
+  const [codeCooldownUntil, setCodeCooldownUntil] = useState<Record<string, number>>({});
+  const [cooldownNow, setCooldownNow] = useState(() => Date.now());
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [emailFieldError, setEmailFieldError] = useState("");
   const [usernameFieldError, setUsernameFieldError] = useState("");
@@ -528,7 +569,7 @@ export function HeadlessLoginPanel({
       }
       await runOidc(experienceAdapter.createSocialSignInRequest(target));
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      showError(e, "sign-in");
       setLoading(null);
       setAwaitingExternal(false);
     }
@@ -541,7 +582,7 @@ export function HeadlessLoginPanel({
     try {
       await runOidc();
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      showError(e, "sign-in");
       setLoading(null);
       setAwaitingExternal(false);
     }
@@ -558,7 +599,6 @@ export function HeadlessLoginPanel({
   const emailRejectionLabel = (decision: ReturnType<typeof evaluateRegisterEmail>): string => {
     if (decision.ok) return "";
     if (decision.reason === "invalid") return labels.emailInvalid;
-    if (decision.reason === "disposable") return labels.emailDisposable;
     return labels.emailDomainNotAllowed;
   };
 
@@ -566,12 +606,8 @@ export function HeadlessLoginPanel({
     if (!useEmailRegister) return true;
     const decision = evaluateRegisterEmailField(registerEmail, emailPolicy);
     if (!decision.ok) {
-      if (decision.reason === "empty") {
+      if (decision.reason === "empty" || decision.reason === "invalid") {
         setEmailFieldError(labels.emailInvalid);
-      } else if (decision.reason === "invalid") {
-        setEmailFieldError(labels.emailInvalid);
-      } else if (decision.reason === "disposable") {
-        setEmailFieldError(labels.emailDisposable);
       } else {
         setEmailFieldError(labels.emailDomainNotAllowed);
       }
@@ -639,7 +675,16 @@ export function HeadlessLoginPanel({
         if (password !== confirmPassword) {
           throw new Error(labels.passwordMismatch);
         }
+        if (!isRegisterPasswordLength(password)) {
+          throw new Error(labels.passwordLength);
+        }
+        if (isRegisterPasswordTooSimple(password)) {
+          throw new Error(labels.passwordSimple);
+        }
         if (useEmailRegister) {
+          if (!isRegisterVerificationCode(verificationCode)) {
+            throw new Error(labels.codeInvalid);
+          }
           if (!validateRegisterEmailBlur()) {
             throw new Error(emailFieldError || labels.emailInvalid);
           }
@@ -732,7 +777,7 @@ export function HeadlessLoginPanel({
       const dup = registerDuplicateFieldFromError(e);
       if (dup === "email") setEmailFieldError(labels.emailTaken);
       if (dup === "username") setUsernameFieldError(labels.usernameTaken);
-      setError(e instanceof Error ? e.message : String(e));
+      showError(e, isRegister ? "register" : "sign-in");
       setLoading(null);
     }
   };
@@ -757,23 +802,43 @@ export function HeadlessLoginPanel({
       }
       throw new Error("Experience API did not return redirectTo");
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      showError(e, "sign-in");
       setLoading(null);
     }
   };
 
+  const registerEmailKey = registerEmail.trim().toLowerCase();
+  const codeCooldownLeft = registerEmailKey
+    ? Math.max(0, Math.ceil(((codeCooldownUntil[registerEmailKey] ?? 0) - cooldownNow) / 1000))
+    : 0;
+
+  useEffect(() => {
+    const active = Object.values(codeCooldownUntil).some((until) => until > Date.now());
+    if (!active) return;
+    const id = window.setInterval(() => setCooldownNow(Date.now()), 250);
+    return () => window.clearInterval(id);
+  }, [codeCooldownUntil]);
+
+  const armCodeCooldown = (email: string, seconds: number) => {
+    const key = email.trim().toLowerCase();
+    if (!key || seconds <= 0) return;
+    const until = Date.now() + seconds * 1000;
+    setCodeCooldownUntil((prev) => ({ ...prev, [key]: until }));
+    setCooldownNow(Date.now());
+  };
+
   const runSendCode = async () => {
-    if (!configured || !useEmailRegister) return;
+    if (!configured || !useEmailRegister || sendingCode || codeCooldownLeft > 0) return;
     if (!ensureConsent()) return;
     if (!validateRegisterEmailBlur()) return;
     setError("");
-    setLoading("send-code");
+    const email = registerEmail.trim();
+    setSendingCode(true);
     try {
       const apiBase = config.experienceApiBase?.trim();
       if (!apiBase || !experienceAdapter.sendRegisterEmailCode) {
         throw new Error(labels.experienceUnavailable);
       }
-      const email = registerEmail.trim();
       const decision = evaluateRegisterEmail(email, emailPolicy);
       if (!decision.ok) throw new Error(emailRejectionLabel(decision) || registerEmailRejectionMessage(decision));
       const captchaToken = getCaptchaToken ? await getCaptchaToken() : undefined;
@@ -790,12 +855,23 @@ export function HeadlessLoginPanel({
         returnUrl,
       });
       setEmailVerificationId(sent.verificationId);
+      armCodeCooldown(email, emailPolicy.codeCooldownSec ?? 120);
     } catch (e) {
+      if (
+        e instanceof ExperienceApiError &&
+        e.retryAfterSec &&
+        e.retryAfterSec > 0 &&
+        e.status === 429 &&
+        e.code === "register_code_cooldown"
+      ) {
+        armCodeCooldown(email, e.retryAfterSec);
+        return;
+      }
       const dup = registerDuplicateFieldFromError(e);
       if (dup === "email") setEmailFieldError(labels.emailTaken);
-      setError(e instanceof Error ? e.message : String(e));
+      showError(e, "send-code");
     } finally {
-      setLoading(null);
+      setSendingCode(false);
     }
   };
 
@@ -839,9 +915,7 @@ export function HeadlessLoginPanel({
   const domainsTipLabel =
     allowedDomainList.length > 0
       ? `${labels.allowedDomainsPrefix}: ${allowedDomainList.join(", ")}`
-      : emailPolicy.mode === "blocklist" || (emailPolicy.mode === "off" && emailPolicy.blocklist.length > 0)
-        ? labels.allowedDomainsBlocklist
-        : labels.allowedDomainsOpen;
+      : "";
 
   const consentBlock =
     consent || (consentDocuments && consentDocuments.length > 0) || consentBlocked ? (
@@ -860,12 +934,16 @@ export function HeadlessLoginPanel({
             ))}
           </p>
         ) : null}
-        {consentBlocked ? <p className={styles.consentError}>{labels.consentRequired}</p> : null}
+        {consentBlocked ? (
+          <p className={styles.consentError} data-testid="login-consent-error">
+            {labels.consentRequired}
+          </p>
+        ) : null}
       </div>
     ) : null;
 
   return (
-    <div className={cx(styles.panel, className)} style={panelStyle}>
+    <div className={cx(styles.panel, className)} style={panelStyle} data-testid="login-headless-panel">
       <header className={styles.brand}>
         {logoSrc ? <img src={logoSrc} alt="" width={48} height={48} className={styles.logo} /> : null}
         <div>
@@ -943,24 +1021,27 @@ export function HeadlessLoginPanel({
                             onBlur={() => {
                               validateRegisterEmailBlur();
                             }}
+                            maxLength={REGISTER_FIELD_LIMITS.emailMax}
                             className={cx(styles.input, emailFieldError && styles.inputInvalid)}
                             disabled={busy}
                             aria-invalid={Boolean(emailFieldError)}
                           />
-                          <span className={styles.domainInfoWrap}>
-                            <button
-                              type="button"
-                              className={styles.domainInfoBtn}
-                              aria-label={labels.allowedDomainsInfo}
-                              title={domainsTipLabel}
-                              disabled={busy}
-                            >
-                              i
-                            </button>
-                            <span className={styles.domainInfoPopover} role="tooltip">
-                              {domainsTipLabel}
+                          {domainsTipLabel ? (
+                            <span className={styles.domainInfoWrap}>
+                              <button
+                                type="button"
+                                className={styles.domainInfoBtn}
+                                aria-label={labels.allowedDomainsInfo}
+                                title={domainsTipLabel}
+                                disabled={busy}
+                              >
+                                i
+                              </button>
+                              <span className={styles.domainInfoPopover} role="tooltip">
+                                {domainsTipLabel}
+                              </span>
                             </span>
-                          </span>
+                          ) : null}
                         </div>
                         {emailFieldError ? (
                           <p className={styles.fieldError} data-testid="register-email-error">
@@ -974,6 +1055,7 @@ export function HeadlessLoginPanel({
                           name="verificationCode"
                           inputMode="numeric"
                           autoComplete="one-time-code"
+                          maxLength={6}
                           placeholder={labels.verificationCodePlaceholder}
                           value={verificationCode}
                           onChange={(e) => setVerificationCode(e.target.value)}
@@ -982,15 +1064,29 @@ export function HeadlessLoginPanel({
                         />
                         <button
                           type="button"
-                          className={styles.secondaryBtn}
-                          disabled={busy || !registerEmail.trim()}
+                          className={cx(styles.secondaryBtn, styles.codeSendBtn)}
+                          data-state={sendingCode ? "loading" : codeCooldownLeft > 0 ? "cooldown" : "idle"}
+                          disabled={busy || sendingCode || codeCooldownLeft > 0 || !registerEmail.trim()}
+                          aria-busy={sendingCode}
+                          aria-live="polite"
+                          aria-label={
+                            sendingCode
+                              ? labels.sendingCode
+                              : codeCooldownLeft > 0
+                                ? labels.codeResendIn.replace("{{seconds}}", String(codeCooldownLeft))
+                                : undefined
+                          }
                           onClick={() => void runSendCode()}
                         >
-                          {loading === "send-code"
-                            ? "…"
-                            : emailVerificationId
-                              ? labels.resendCode
-                              : labels.sendCode}
+                          <span className={sendingCode || codeCooldownLeft > 0 ? styles.codeSendHidden : undefined}>
+                            {emailVerificationId ? labels.resendCode : labels.sendCode}
+                          </span>
+                          {sendingCode ? <span className={styles.codeSpinner} aria-hidden /> : null}
+                          {!sendingCode && codeCooldownLeft > 0 ? (
+                            <span className={styles.codeCountdown} aria-hidden>
+                              {codeCooldownLeft}s
+                            </span>
+                          ) : null}
                         </button>
                       </div>
                     </>
@@ -1000,6 +1096,7 @@ export function HeadlessLoginPanel({
                       type="text"
                       name="registerUsername"
                       autoComplete="username"
+                      maxLength={REGISTER_FIELD_LIMITS.usernameMax}
                       placeholder={labels.registerIdentifierPlaceholder}
                       value={registerUsername}
                       onChange={(e) => {
@@ -1041,9 +1138,25 @@ export function HeadlessLoginPanel({
                   type={passwordVisible ? "text" : "password"}
                   name="password"
                   autoComplete={isRegister ? "new-password" : "current-password"}
+                  maxLength={isRegister ? REGISTER_FIELD_LIMITS.passwordMax : undefined}
                   placeholder={labels.passwordPlaceholder}
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    setError((prev) =>
+                      prev === labels.passwordSimple || prev === labels.passwordLength ? "" : prev,
+                    );
+                  }}
+                  onBlur={() => {
+                    if (!isRegister || !password) return;
+                    if (!isRegisterPasswordLength(password)) {
+                      setError(labels.passwordLength);
+                      return;
+                    }
+                    if (isRegisterPasswordTooSimple(password)) {
+                      setError(labels.passwordSimple);
+                    }
+                  }}
                   className={cx(styles.input, styles.passwordInput)}
                   disabled={busy}
                 />
@@ -1064,6 +1177,7 @@ export function HeadlessLoginPanel({
                     type={passwordVisible ? "text" : "password"}
                     name="confirmPassword"
                     autoComplete="new-password"
+                    maxLength={REGISTER_FIELD_LIMITS.passwordMax}
                     placeholder={labels.confirmPasswordPlaceholder}
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
@@ -1141,7 +1255,11 @@ export function HeadlessLoginPanel({
         <p className={styles.error}>IdP is not configured (issuer / clientId / redirectUri).</p>
       )}
 
-      {error ? <p className={styles.error}>{error}</p> : null}
+      {error ? (
+        <p className={styles.error} data-testid="login-form-error">
+          {error}
+        </p>
+      ) : null}
 
       {showCancel ? (
         <button type="button" className={styles.cancelBtn} disabled={busy} onClick={onCancel}>

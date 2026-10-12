@@ -16,13 +16,16 @@ export interface SmtpSendResult {
   messageId?: string;
 }
 
-const UNKNOWN_CODES = new Set([
-  "ETIMEDOUT",
-  "ECONNECTION",
-  "ESOCKET",
-  "ECONNRESET",
-  "EDNS",
+const UNKNOWN_CODES = new Set(["ETIMEDOUT", "ECONNECTION", "ESOCKET", "ECONNRESET"]);
+
+/** The session never accepted the message, so the next provider can send it. */
+const REJECTED_CODES = new Set([
   "ECONNREFUSED",
+  "ENOTFOUND",
+  "EDNS",
+  "EAUTH",
+  "EENVELOPE",
+  "EMESSAGE",
 ]);
 
 export function createSmtpProvider(options: {
@@ -33,6 +36,9 @@ export function createSmtpProvider(options: {
   pass?: string;
   secure?: boolean;
   requireTLS?: boolean;
+  rejectUnauthorized?: boolean;
+  /** TLS SNI. Use the mail hostname when SMTP_HOST is an IP. */
+  tlsServername?: string;
   sendMail?: (mail: SmtpSendInput) => Promise<SmtpSendResult>;
 }): EmailProvider {
   const port = options.port ?? 587;
@@ -46,6 +52,11 @@ export function createSmtpProvider(options: {
         port,
         secure,
         requireTLS,
+        tls: {
+          minVersion: "TLSv1.2",
+          servername: options.tlsServername || options.host,
+          rejectUnauthorized: options.rejectUnauthorized ?? true,
+        },
         auth: options.user ? { user: options.user, pass: options.pass ?? "" } : undefined,
         connectionTimeout: 15_000,
         greetingTimeout: 15_000,
@@ -80,11 +91,18 @@ export function createSmtpProvider(options: {
             ? String((err as { code?: unknown }).code ?? "")
             : "";
         const messageText = err instanceof Error ? err.message : "smtp send failed";
+        const responseCode =
+          typeof err === "object" && err && "responseCode" in err
+            ? Number((err as { responseCode?: unknown }).responseCode)
+            : Number.NaN;
+        if (
+          REJECTED_CODES.has(code) ||
+          (Number.isInteger(responseCode) && responseCode >= 400)
+        ) {
+          throw new ProviderAttemptError(messageText, { retryable: true });
+        }
         if (UNKNOWN_CODES.has(code)) {
           throw new ProviderAttemptError(messageText, { unknownOutcome: true });
-        }
-        if (code === "EAUTH" || code === "EENVELOPE") {
-          throw new ProviderAttemptError(messageText, { retryable: false });
         }
         throw new ProviderAttemptError(messageText, { unknownOutcome: true });
       }

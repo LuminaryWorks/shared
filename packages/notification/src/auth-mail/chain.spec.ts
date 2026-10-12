@@ -119,7 +119,7 @@ describe("sendWithChain", () => {
     expect(brevo.calls).toBe(1);
   });
 
-  it("stops on a non-retryable rejection", async () => {
+  it("fails over a hard rejection until a later provider accepts", async () => {
     const resend = viSend(() => {
       throw new ProviderAttemptError("bad from", { retryable: false });
     });
@@ -130,10 +130,30 @@ describe("sendWithChain", () => {
       chainProvider(provider("brevo", brevo.fn, "brevo"), { priority: 2 }),
     ];
 
+    const result = await sendWithChain({ message: message(), providers, idempotency });
+    expect(result.providerId).toBe("brevo");
+    expect(resend.calls).toBe(1);
+    expect(brevo.calls).toBe(1);
+  });
+
+  it("reports failure only after every provider rejects", async () => {
+    const resend = viSend(() => {
+      throw new ProviderAttemptError("resend down", { retryable: false });
+    });
+    const brevo = viSend(() => {
+      throw new ProviderAttemptError("brevo down", { retryable: true });
+    });
+    const idempotency = new MemoryIdempotencyStore();
+    const providers = [
+      chainProvider(provider("resend", resend.fn), { priority: 1 }),
+      chainProvider(provider("brevo", brevo.fn, "brevo"), { priority: 2 }),
+    ];
+
     await expect(sendWithChain({ message: message(), providers, idempotency })).rejects.toBeInstanceOf(
       AuthMailDeliveryError,
     );
-    expect(brevo.calls).toBe(0);
+    expect(resend.calls).toBe(1);
+    expect(brevo.calls).toBe(1);
   });
 
   it("fails when nothing is configured", async () => {

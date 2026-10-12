@@ -1,10 +1,14 @@
 /**
- * Self-register email policy for early ToC / hosted SaaS.
+ * Self-register email policy.
  *
- * Why allowlist: disposable / game / temporary mailboxes drive bot farms and
- * verification-email cost. Early stage: only well-known consumer providers.
- * Enterprise / private: set mode `off` or extend allowlist with corporate domains.
+ * Default is open: any address that matches the email shape and length limits
+ * may register. Set mode `allowlist` only when a deploy wants a closed set.
  */
+
+/** Seconds before the same address can request another register verification code. */
+export const DEFAULT_REGISTER_CODE_COOLDOWN_SEC = 120;
+
+import { isRegisterEmailShape } from "./register-field-limits";
 
 /** Popular consumer inboxes (CN + global). Lowercase host only. */
 export const DEFAULT_REGISTER_EMAIL_ALLOWLIST: readonly string[] = [
@@ -40,35 +44,21 @@ export const DEFAULT_REGISTER_EMAIL_ALLOWLIST: readonly string[] = [
   "139.com",
 ];
 
-/** Common disposable / throwaway hosts (used when mode is blocklist or as extra deny). */
-export const DEFAULT_DISPOSABLE_EMAIL_BLOCKLIST: readonly string[] = [
-  "mailinator.com",
-  "guerrillamail.com",
-  "guerrillamail.net",
-  "10minutemail.com",
-  "tempmail.com",
-  "temp-mail.org",
-  "yopmail.com",
-  "trashmail.com",
-  "sharklasers.com",
-  "getnada.com",
-  "maildrop.cc",
-  "discard.email",
-  "mailnesia.com",
-];
-
 export type RegisterEmailMode = "allowlist" | "blocklist" | "off";
 
 export interface RegisterEmailPolicy {
   mode: RegisterEmailMode;
   allowlist: readonly string[];
   blocklist: readonly string[];
+  /** Seconds before the same email can request another register code. */
+  codeCooldownSec: number;
 }
 
 export interface RegisterEmailPolicyInput {
   mode?: string | null;
   allowlist?: string | readonly string[] | null;
   blocklist?: string | readonly string[] | null;
+  codeCooldownSec?: number | null;
 }
 
 function parseList(raw: string | readonly string[] | null | undefined): string[] {
@@ -84,10 +74,18 @@ function parseList(raw: string | readonly string[] | null | undefined): string[]
 }
 
 export function normalizeRegisterEmailMode(raw: string | null | undefined): RegisterEmailMode {
-  const key = (raw || "allowlist").trim().toLowerCase();
-  if (key === "off" || key === "false" || key === "0" || key === "disabled") return "off";
+  const key = (raw ?? "").trim().toLowerCase();
+  if (key === "allowlist" || key === "allow") return "allowlist";
   if (key === "blocklist" || key === "deny" || key === "blacklist") return "blocklist";
+  if (!key || key === "off" || key === "false" || key === "0" || key === "disabled") return "off";
   return "allowlist";
+}
+
+function resolveCodeCooldownSec(raw: number | null | undefined): number {
+  if (raw == null) return DEFAULT_REGISTER_CODE_COOLDOWN_SEC;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n < 0) return DEFAULT_REGISTER_CODE_COOLDOWN_SEC;
+  return Math.floor(n);
 }
 
 export function resolveRegisterEmailPolicy(input: RegisterEmailPolicyInput = {}): RegisterEmailPolicy {
@@ -97,7 +95,8 @@ export function resolveRegisterEmailPolicy(input: RegisterEmailPolicyInput = {})
   return {
     mode,
     allowlist: allowlist.length ? allowlist : DEFAULT_REGISTER_EMAIL_ALLOWLIST,
-    blocklist: blocklist.length ? blocklist : DEFAULT_DISPOSABLE_EMAIL_BLOCKLIST,
+    blocklist,
+    codeCooldownSec: resolveCodeCooldownSec(input.codeCooldownSec),
   };
 }
 
@@ -133,17 +132,14 @@ export function emailDomain(email: string): string | null {
 }
 
 export function isValidEmailShape(email: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+  return isRegisterEmailShape(email);
 }
 
 export type RegisterEmailDecision =
   | { ok: true; domain: string }
-  | { ok: false; reason: "invalid" | "not_allowed" | "disposable"; domain?: string };
+  | { ok: false; reason: "invalid" | "not_allowed"; domain?: string };
 
-/**
- * Enforce register email policy. `off` still rejects disposable hosts when
- * `blocklist` is non-empty (defense in depth); pass `blocklist: []` to disable.
- */
+/** Accept any email-shaped address unless mode is `allowlist`. */
 export function evaluateRegisterEmail(
   email: string,
   policy: RegisterEmailPolicy = resolveRegisterEmailPolicy(),
@@ -152,13 +148,7 @@ export function evaluateRegisterEmail(
   const domain = emailDomain(email);
   if (!domain) return { ok: false, reason: "invalid" };
 
-  if (policy.blocklist.includes(domain)) {
-    return { ok: false, reason: "disposable", domain };
-  }
-
-  if (policy.mode === "off") return { ok: true, domain };
-
-  if (policy.mode === "blocklist") return { ok: true, domain };
+  if (policy.mode === "off" || policy.mode === "blocklist") return { ok: true, domain };
 
   if (!policy.allowlist.includes(domain)) {
     return { ok: false, reason: "not_allowed", domain };
@@ -168,10 +158,7 @@ export function evaluateRegisterEmail(
 
 export function registerEmailRejectionMessage(decision: RegisterEmailDecision): string {
   if (decision.ok) return "";
-  if (decision.reason === "invalid") return "Enter a valid email address";
-  if (decision.reason === "disposable") {
-    return "Temporary or disposable email addresses are not allowed";
-  }
+  if (decision.reason === "invalid") return "Enter a valid email address (6–64 characters)";
   return "This email provider is not accepted for self-registration. Use Gmail, Outlook, QQ, 163, iCloud, or another allowed provider — or sign in with Google / GitHub.";
 }
 
@@ -211,22 +198,8 @@ export function registerEmailDomainsHint(
 ): string | null {
   const prefix = labels?.allowedDomainsPrefix ?? "Allowed email domains";
   const formatted = formatAllowedEmailDomains(policy);
-  if (formatted) return `${prefix}: ${formatted}`;
-  if (policy.mode === "blocklist") {
-    return (
-      labels?.allowedDomainsBlocklist ??
-      "Most email providers are accepted. Temporary / disposable addresses are blocked."
-    );
-  }
-  if (policy.mode === "off" && policy.blocklist.length > 0) {
-    return (
-      labels?.allowedDomainsBlocklist ??
-      "Most email providers are accepted. Temporary / disposable addresses are blocked."
-    );
-  }
-  return (
-    labels?.allowedDomainsOpen ?? "Email registration is open for most providers."
-  );
+  if (!formatted) return null;
+  return `${prefix}: ${formatted}`;
 }
 
 /** Public policy document from Auth Gateway `GET /api/register-policy`. */
@@ -236,6 +209,7 @@ export interface PublicRegisterPolicyResponse {
   blocklist?: string[];
   ipDailyLimit?: number;
   codeHourlyLimit?: number;
+  codeCooldownSec?: number;
   enabled?: boolean;
 }
 
@@ -260,6 +234,7 @@ export async function fetchRegisterEmailPolicy(
       mode: data.mode,
       allowlist: data.allowlist,
       blocklist: data.blocklist,
+      codeCooldownSec: data.codeCooldownSec,
     });
   } catch {
     return resolveRegisterEmailPolicy();

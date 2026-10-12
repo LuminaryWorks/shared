@@ -25,6 +25,12 @@ import {
   type SocialSignInRequest,
 } from "./login-experience-adapter";
 import {
+  isRegisterPasswordLength,
+  isRegisterPasswordTooSimple,
+  isRegisterUsernameShape,
+  isRegisterVerificationCode,
+} from "./register-field-limits";
+import {
   evaluateRegisterEmail,
   registerEmailRejectionMessage,
   resolveRegisterEmailPolicy,
@@ -32,11 +38,9 @@ import {
 } from "./register-policy";
 import type { LuminaryIdpConfig } from "./types";
 
-/** Logto username pattern for NewPasswordIdentity (see Experience API docs). */
-const LOGTO_USERNAME_RE = /^[A-Za-z_]\w*$/;
-
+/** Logto username pattern, plus the shared 3–20 length limit. */
 export function isLogtoRegisterUsername(value: string): boolean {
-  return LOGTO_USERNAME_RE.test(value.trim());
+  return isRegisterUsernameShape(value);
 }
 
 function experienceUrl(apiBase: string, path: string): string {
@@ -46,19 +50,31 @@ function experienceUrl(apiBase: string, path: string): string {
 export class ExperienceApiError extends Error {
   readonly status: number;
   readonly code: string;
+  readonly retryAfterSec: number | null;
 
-  constructor(status: number, code: string, message: string) {
+  constructor(status: number, code: string, message: string, retryAfterSec: number | null = null) {
     super(message);
     this.name = "ExperienceApiError";
     this.status = status;
     this.code = code;
+    this.retryAfterSec = retryAfterSec;
   }
 }
 
 const MFA_REQUIRED_CODE = "session.mfa.require_mfa_verification";
+const MISSING_PROFILE_CODE = "user.missing_profile";
 
 export function isMfaVerificationRequired(error: unknown): boolean {
   return error instanceof ExperienceApiError && error.code === MFA_REQUIRED_CODE;
+}
+
+/**
+ * Register identification returns this when the verified email is accepted
+ * but Sign-in experience still requires username / password (or other profile).
+ * Logto's `message` does not contain the code.
+ */
+export function isUserMissingProfile(error: unknown): boolean {
+  return error instanceof ExperienceApiError && error.code === MISSING_PROFILE_CODE;
 }
 
 async function experienceFetch<T>(apiBase: string, path: string, init: RequestInit): Promise<T> {
@@ -81,10 +97,21 @@ async function experienceFetch<T>(apiBase: string, path: string, init: RequestIn
     }
   }
   if (!res.ok) {
-    const body = data && typeof data === "object" && data !== null ? (data as { code?: unknown; message?: unknown }) : null;
-    const code = typeof body?.code === "string" ? body.code : "";
+    const body =
+      data && typeof data === "object" && data !== null
+        ? (data as { code?: unknown; error?: unknown; message?: unknown; retryAfterSec?: unknown })
+        : null;
+    const code =
+      typeof body?.code === "string" ? body.code : typeof body?.error === "string" ? body.error : "";
     const msg = typeof body?.message === "string" ? body.message : `Experience API ${res.status}`;
-    throw new ExperienceApiError(res.status, code, msg);
+    const headerRetry = Number(res.headers.get("retry-after"));
+    const bodyRetry = Number(body?.retryAfterSec);
+    const retryAfterSec = Number.isFinite(bodyRetry) && bodyRetry > 0
+      ? Math.ceil(bodyRetry)
+      : Number.isFinite(headerRetry) && headerRetry > 0
+        ? Math.ceil(headerRetry)
+        : null;
+    throw new ExperienceApiError(res.status, code, msg, retryAfterSec);
   }
   return data as T;
 }
@@ -266,8 +293,13 @@ export class LogtoExperienceAdapter implements LoginExperienceAdapter {
         "Register with a username (letters, digits, underscore; start with a letter or _). Use social login for email-based accounts.",
       );
     }
-    if (!password || password.length < 8) {
-      throw new Error("Password must be at least 8 characters");
+    if (!isRegisterPasswordLength(password)) {
+      throw new Error("Password must be 8–32 characters");
+    }
+    if (isRegisterPasswordTooSimple(password)) {
+      throw new Error(
+        "Password is too simple. Use both letters and digits, and avoid repeats or sequences.",
+      );
     }
 
     await bootstrapOidcInteraction(input);
@@ -429,14 +461,33 @@ export class LogtoExperienceAdapter implements LoginExperienceAdapter {
         "Username must start with a letter or underscore and use only letters, digits, and underscores.",
       );
     }
-    if (!input.password || input.password.length < 8) {
-      throw new Error("Password must be at least 8 characters");
+    if (!isRegisterPasswordLength(input.password ?? "")) {
+      throw new Error("Password must be 8–32 characters");
     }
-    if (!input.code?.trim() || !input.verificationId?.trim()) {
-      throw new Error("Email verification code is required");
+    if (isRegisterPasswordTooSimple(input.password ?? "")) {
+      throw new Error(
+        "Password is too simple. Use both letters and digits, and avoid repeats or sequences.",
+      );
+    }
+    if (!isRegisterVerificationCode(input.code ?? "") || !input.verificationId?.trim()) {
+      throw new Error("Enter the 6-digit verification code");
     }
 
     // Continue the Register interaction created by sendRegisterEmailCode — do not PUT Register again.
+    // Save username and password before verifying the code. A taken username must not
+    // consume the passcode, or the next submit reports "Verification code not found".
+
+    if (username) {
+      await experienceFetch(input.apiBase, "/profile", {
+        method: "POST",
+        body: JSON.stringify({ type: "username", value: username }),
+      });
+    }
+
+    await experienceFetch(input.apiBase, "/profile", {
+      method: "POST",
+      body: JSON.stringify({ type: "password", value: input.password }),
+    });
 
     const verified = await experienceFetch<{ verificationId?: string }>(
       input.apiBase,
@@ -459,32 +510,16 @@ export class LogtoExperienceAdapter implements LoginExperienceAdapter {
         body: JSON.stringify({ verificationId: codeVerificationId }),
       });
     } catch (error) {
-      const msg = error instanceof Error ? error.message : String(error);
-      if (!/missing_profile/i.test(msg)) {
-        // Logto returns missing_profile when password/username are still required — continue.
-        // Other errors (already in use, etc.) must surface.
-        if (!/422|password|profile/i.test(msg)) {
-          throw error instanceof Error ? error : new Error(msg);
-        }
+      // Expected when sign-up still needs a profile field. The code lives on
+      // ExperienceApiError.code; the human message does not mention it.
+      if (!isUserMissingProfile(error)) {
+        throw error instanceof Error ? error : new Error(String(error));
       }
-    }
-
-    if (username) {
-      await experienceFetch(input.apiBase, "/profile", {
+      await experienceFetch(input.apiBase, "/identification", {
         method: "POST",
-        body: JSON.stringify({ type: "username", value: username }),
+        body: JSON.stringify({}),
       });
     }
-
-    await experienceFetch(input.apiBase, "/profile", {
-      method: "POST",
-      body: JSON.stringify({ type: "password", value: input.password }),
-    });
-
-    await experienceFetch(input.apiBase, "/identification", {
-      method: "POST",
-      body: JSON.stringify({}),
-    });
 
     const submitted = await experienceFetch<{ redirectTo?: string }>(input.apiBase, "/submit", {
       method: "POST",

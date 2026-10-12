@@ -13,8 +13,9 @@ import type {
 } from "./types";
 
 /**
- * Send once. A prior success replays. A timeout or in-flight attempt does not
- * call another provider. Only a definite rejection or quota response fails over.
+ * Send once. A prior success replays. A timeout or a dropped connection does not
+ * call another provider, because the first one may already have accepted.
+ * Any definite rejection moves to the next provider until one accepts or all fail.
  */
 export async function sendWithChain(input: {
   message: AuthMailMessage;
@@ -87,16 +88,7 @@ export async function sendWithChain(input: {
         await input.idempotency.save(record);
         throw new AuthMailUnknownOutcomeError(record);
       }
-      if (attempt.retryable) {
-        last = attempt;
-        continue;
-      }
-      await input.idempotency.save({
-        key,
-        status: "failed",
-        providerId: candidate.provider.id,
-      });
-      throw new AuthMailDeliveryError(attempt.message);
+      last = attempt;
     }
   }
 
