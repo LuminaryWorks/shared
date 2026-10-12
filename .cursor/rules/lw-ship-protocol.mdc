@@ -1,0 +1,13 @@
+---
+description: LuminaryWorks 生态上线协议（产品仓）
+alwaysApply: true
+---
+
+# 发布协议（产品仓）
+
+完整规则见本仓 `AGENTS.md` 与 sibling `../LuminaryWorksDeployment/AGENTS.md`。
+
+- 修 → 本机验 → push；用户要上线时**同会话**进 `LuminaryWorksDeployment` 执行 ship。
+- 禁止本仓直连生产改配置/compose。
+- 每次上线新 pack 版本；回滚看 `release-<ver>` + `rollback.py`。
+- 双机靠 git push/pull；同时只一台 ship。
