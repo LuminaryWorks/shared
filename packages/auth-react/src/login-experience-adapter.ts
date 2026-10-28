@@ -13,6 +13,8 @@ export const LOGIN_EXPERIENCE_CAPABILITIES = {
   passwordSignUp: "password-sign-up",
   /** Email + verification code + password self-register. */
   emailCodeSignUp: "email-code-sign-up",
+  /** Email verification code + new password (Logto ForgotPassword). */
+  emailForgotPassword: "email-forgot-password",
   socialConnectors: "social-connectors",
   socialDirectSignIn: "social-direct-sign-in",
 } as const;
@@ -110,6 +112,27 @@ export interface ExperienceUsernameAvailabilityResult {
   available: boolean;
 }
 
+/** Same bootstrap fields as email register; used for ForgotPassword send-code. */
+export type ExperienceForgotPasswordSendCodeInput = ExperienceEmailSignUpSendCodeInput;
+
+export type ExperienceForgotPasswordSendCodeResult = ExperienceEmailSignUpSendCodeResult;
+
+export interface ExperienceForgotPasswordCompleteInput {
+  apiBase: string;
+  email: string;
+  password: string;
+  code: string;
+  verificationId: string;
+  identifier?: string;
+  captchaToken?: string;
+  issuer?: string;
+  clientId?: string;
+  redirectUri?: string;
+  audience?: string;
+  scopes?: string;
+  returnUrl?: string;
+}
+
 export interface ExperienceSocialConnector {
   id: string;
   target: string;
@@ -162,6 +185,12 @@ export interface LoginExperienceAdapter {
   checkRegisterUsernameAvailable?(
     input: ExperienceUsernameAvailabilityInput,
   ): Promise<ExperienceUsernameAvailabilityResult>;
+  sendForgotPasswordEmailCode?(
+    input: ExperienceForgotPasswordSendCodeInput,
+  ): Promise<ExperienceForgotPasswordSendCodeResult>;
+  experienceForgotPassword?(
+    input: ExperienceForgotPasswordCompleteInput,
+  ): Promise<ExperiencePasswordSignUpResult>;
   fetchSocialConnectors?(
     input: FetchSocialConnectorsInput,
   ): Promise<ExperienceSocialConnector[]>;

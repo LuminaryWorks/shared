@@ -13,7 +13,11 @@ import {
   type LoginExperienceAdapter,
   type SocialSignInRequest,
 } from "./login-experience-adapter";
-import { ExperienceApiError, LogtoExperienceAdapter } from "./logto-experience-adapter";
+import {
+  ExperienceApiError,
+  LogtoExperienceAdapter,
+  sameOriginAuthorizeUrl,
+} from "./logto-experience-adapter";
 import { signInPopup, signInRedirect, prepareSignInRequestUrl } from "./oidc-client";
 import {
   isRegisterPasswordLength,
@@ -68,6 +72,12 @@ export interface HeadlessLoginLabels {
   registerLink?: string;
   /** Switch link when on register: "Already have an account? Sign in" */
   loginLink?: string;
+  /** Sign-in → forgot password */
+  forgotLink?: string;
+  forgotTitle?: string;
+  forgotSubtitle?: string;
+  submitForgot?: string;
+  forgotHint?: string;
   passwordMismatch?: string;
   /** Register password outside 8–32 characters. */
   passwordLength?: string;
@@ -245,6 +255,11 @@ const defaults: Required<HeadlessLoginLabels> = {
   hidePassword: "Hide password",
   registerLink: "Create an account",
   loginLink: "Already have an account? Sign in",
+  forgotLink: "Forgot password?",
+  forgotTitle: "Reset password",
+  forgotSubtitle: "Verify your email, then choose a new password",
+  submitForgot: "Reset password",
+  forgotHint: "We will email a verification code to reset your password.",
   passwordMismatch: "Passwords do not match",
   passwordLength: "Password must be 8–32 characters",
   passwordSimple:
@@ -390,7 +405,7 @@ export function HeadlessLoginPanel({
     );
   };
   const configured = isIdpConfigured(config);
-  const [panelMode, setPanelMode] = useState<"sign-in" | "register">("sign-in");
+  const [panelMode, setPanelMode] = useState<"sign-in" | "register" | "forgot">("sign-in");
   const [identifier, setIdentifier] = useState(initialIdentifier ?? "");
   const [registerEmail, setRegisterEmail] = useState("");
   const [registerUsername, setRegisterUsername] = useState("");
@@ -449,7 +464,12 @@ export function HeadlessLoginPanel({
   const usernameRegisterEnabled =
     experienceAdapter.capabilities.includes(LOGIN_EXPERIENCE_CAPABILITIES.passwordSignUp) &&
     typeof experienceAdapter.experiencePasswordSignUp === "function";
+  const forgotEnabled =
+    experienceAdapter.capabilities.includes(LOGIN_EXPERIENCE_CAPABILITIES.emailForgotPassword) &&
+    typeof experienceAdapter.sendForgotPasswordEmailCode === "function" &&
+    typeof experienceAdapter.experienceForgotPassword === "function";
   const isRegister = panelMode === "register" && registerEnabled;
+  const isForgot = panelMode === "forgot" && forgotEnabled;
   /** Prefer email+code path whenever available; username is collected alongside. */
   const useEmailRegister = isRegister && emailRegisterEnabled;
   const useUsernameOnlyRegister =
@@ -589,11 +609,15 @@ export function HeadlessLoginPanel({
   };
 
   const followExperienceRedirect = (redirectTo: string) => {
+    // Logto submit returns login.* authorize URLs; Experience cookies live on the
+    // SPA / Auth Gateway origin — rewrite or the resume request expires.
+    const apiBase = (config.experienceApiBase || "").replace(/\/$/, "");
+    const target = apiBase ? sameOriginAuthorizeUrl(redirectTo, apiBase) : redirectTo;
     if (onExperienceRedirect) {
-      onExperienceRedirect(redirectTo);
+      onExperienceRedirect(target);
       return;
     }
-    window.location.assign(redirectTo);
+    window.location.assign(target);
   };
 
   const emailRejectionLabel = (decision: ReturnType<typeof evaluateRegisterEmail>): string => {
@@ -671,6 +695,47 @@ export function HeadlessLoginPanel({
         throw new Error(labels.experienceUnavailable);
       }
       const captchaToken = getCaptchaToken ? await getCaptchaToken() : undefined;
+      if (isForgot) {
+        if (password !== confirmPassword) {
+          throw new Error(labels.passwordMismatch);
+        }
+        if (!isRegisterPasswordLength(password)) {
+          throw new Error(labels.passwordLength);
+        }
+        if (isRegisterPasswordTooSimple(password)) {
+          throw new Error(labels.passwordSimple);
+        }
+        if (!isRegisterVerificationCode(verificationCode)) {
+          throw new Error(labels.codeInvalid);
+        }
+        const email = registerEmail.trim().toLowerCase();
+        if (!email.includes("@")) {
+          throw new Error(labels.emailInvalid);
+        }
+        if (!experienceAdapter.experienceForgotPassword || !emailVerificationId) {
+          throw new Error("Send and enter the email verification code first");
+        }
+        const result = await experienceAdapter.experienceForgotPassword({
+          apiBase,
+          identifier: email,
+          email,
+          password,
+          code: verificationCode,
+          verificationId: emailVerificationId,
+          captchaToken,
+          issuer: config.issuer,
+          clientId: config.clientId,
+          redirectUri: config.redirectUri,
+          audience: config.audience,
+          scopes: config.scopes,
+          returnUrl,
+        });
+        if (result.redirectTo) {
+          followExperienceRedirect(result.redirectTo);
+          return;
+        }
+        throw new Error("Experience API did not return redirectTo");
+      }
       if (isRegister) {
         if (password !== confirmPassword) {
           throw new Error(labels.passwordMismatch);
@@ -828,20 +893,49 @@ export function HeadlessLoginPanel({
   };
 
   const runSendCode = async () => {
-    if (!configured || !useEmailRegister || sendingCode || codeCooldownLeft > 0) return;
+    const forForgot = isForgot;
+    const forRegister = useEmailRegister;
+    if (!configured || (!forForgot && !forRegister) || sendingCode || codeCooldownLeft > 0) return;
     if (!ensureConsent()) return;
-    if (!validateRegisterEmailBlur()) return;
+    if (forRegister && !validateRegisterEmailBlur()) return;
     setError("");
     const email = registerEmail.trim();
+    if (forForgot && !email.includes("@")) {
+      setEmailFieldError(labels.emailInvalid);
+      return;
+    }
     setSendingCode(true);
     try {
       const apiBase = config.experienceApiBase?.trim();
-      if (!apiBase || !experienceAdapter.sendRegisterEmailCode) {
+      if (!apiBase) {
+        throw new Error(labels.experienceUnavailable);
+      }
+      const captchaToken = getCaptchaToken ? await getCaptchaToken() : undefined;
+      if (forForgot) {
+        if (!experienceAdapter.sendForgotPasswordEmailCode) {
+          throw new Error(labels.experienceUnavailable);
+        }
+        const sent = await experienceAdapter.sendForgotPasswordEmailCode({
+          apiBase,
+          identifier: email,
+          email,
+          captchaToken,
+          issuer: config.issuer,
+          clientId: config.clientId,
+          redirectUri: config.redirectUri,
+          audience: config.audience,
+          scopes: config.scopes,
+          returnUrl,
+        });
+        setEmailVerificationId(sent.verificationId);
+        armCodeCooldown(email, emailPolicy.codeCooldownSec ?? 120);
+        return;
+      }
+      if (!experienceAdapter.sendRegisterEmailCode) {
         throw new Error(labels.experienceUnavailable);
       }
       const decision = evaluateRegisterEmail(email, emailPolicy);
       if (!decision.ok) throw new Error(emailRejectionLabel(decision) || registerEmailRejectionMessage(decision));
-      const captchaToken = getCaptchaToken ? await getCaptchaToken() : undefined;
       const sent = await experienceAdapter.sendRegisterEmailCode({
         apiBase,
         identifier: email,
@@ -875,7 +969,7 @@ export function HeadlessLoginPanel({
     }
   };
 
-  const switchPanelMode = (next: "sign-in" | "register") => {
+  const switchPanelMode = (next: "sign-in" | "register" | "forgot") => {
     setPanelMode(next);
     setError("");
     setConfirmPassword("");
@@ -886,31 +980,54 @@ export function HeadlessLoginPanel({
     if (next === "register") {
       setRegisterEmail("");
       setRegisterUsername(identifier.includes("@") ? "" : identifier.trim());
+    } else if (next === "forgot") {
+      setRegisterEmail(identifier.includes("@") ? identifier.trim() : "");
+      setPassword("");
     }
   };
 
   const busy = loading !== null || checkingUsername;
-  const showSocial = !isRegister && socialEnabled && connectors.length > 0;
-  const showHint = !isRegister && (Boolean(labelsProp?.hint) || showSocial);
-  const formReady = isRegister
-    ? Boolean(password) &&
+  const showSocial = !isRegister && !isForgot && socialEnabled && connectors.length > 0;
+  const showHint = isForgot
+    ? Boolean(labels.forgotHint)
+    : !isRegister && (Boolean(labelsProp?.hint) || showSocial);
+  const formReady = isForgot
+    ? Boolean(registerEmail.trim()) &&
+      Boolean(password) &&
       Boolean(confirmPassword) &&
-      Boolean(registerUsername.trim()) &&
-      !usernameFieldError &&
-      (useUsernameOnlyRegister ||
-        (Boolean(registerEmail.trim()) &&
-          !emailFieldError &&
-          Boolean(verificationCode.trim()) &&
-          Boolean(emailVerificationId)))
-    : Boolean(identifier.trim()) && Boolean(password);
-  const titleText = mfaPending ? labels.mfaTitle : isRegister ? labels.registerTitle : labels.title;
+      Boolean(verificationCode.trim()) &&
+      Boolean(emailVerificationId)
+    : isRegister
+      ? Boolean(password) &&
+        Boolean(confirmPassword) &&
+        Boolean(registerUsername.trim()) &&
+        !usernameFieldError &&
+        (useUsernameOnlyRegister ||
+          (Boolean(registerEmail.trim()) &&
+            !emailFieldError &&
+            Boolean(verificationCode.trim()) &&
+            Boolean(emailVerificationId)))
+      : Boolean(identifier.trim()) && Boolean(password);
+  const titleText = mfaPending
+    ? labels.mfaTitle
+    : isForgot
+      ? labels.forgotTitle
+      : isRegister
+        ? labels.registerTitle
+        : labels.title;
   const subtitleText = mfaPending
     ? labels.mfaSubtitle
+    : isForgot
+      ? labels.forgotSubtitle
+      : isRegister
+        ? labels.registerSubtitle
+        : labels.subtitle;
+  const submitLabel = isForgot
+    ? labels.submitForgot
     : isRegister
-      ? labels.registerSubtitle
-      : labels.subtitle;
-  const submitLabel = isRegister ? labels.submitRegister : labels.submitPassword;
-  const hintText = labels.hint;
+      ? labels.submitRegister
+      : labels.submitPassword;
+  const hintText = isForgot ? labels.forgotHint : labels.hint;
   const allowedDomainList = useEmailRegister ? listAllowedEmailDomains(emailPolicy) : [];
   const domainsTipLabel =
     allowedDomainList.length > 0
@@ -989,7 +1106,7 @@ export function HeadlessLoginPanel({
             </form>
           ) : passwordEnabled ? (
             <form onSubmit={(e) => void runPassword(e)} className={styles.form}>
-              {isRegister && registerEnabled ? (
+              {(isRegister && registerEnabled) || isForgot ? (
                 <p className={styles.switchModeTop}>
                   <button
                     type="button"
@@ -1001,7 +1118,73 @@ export function HeadlessLoginPanel({
                   </button>
                 </p>
               ) : null}
-              {isRegister ? (
+              {isForgot ? (
+                <>
+                  <div className={styles.fieldBlock}>
+                    <input
+                      type="email"
+                      name="forgotEmail"
+                      autoComplete="email"
+                      placeholder={labels.emailPlaceholder}
+                      value={registerEmail}
+                      onChange={(e) => {
+                        setRegisterEmail(e.target.value);
+                        setEmailFieldError("");
+                        setEmailVerificationId(null);
+                      }}
+                      maxLength={REGISTER_FIELD_LIMITS.emailMax}
+                      className={cx(styles.input, emailFieldError && styles.inputInvalid)}
+                      disabled={busy}
+                      aria-invalid={Boolean(emailFieldError)}
+                    />
+                    {emailFieldError ? (
+                      <p className={styles.fieldError} data-testid="forgot-email-error">
+                        {emailFieldError}
+                      </p>
+                    ) : null}
+                  </div>
+                  <div className={styles.codeRow}>
+                    <input
+                      type="text"
+                      name="verificationCode"
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      maxLength={6}
+                      placeholder={labels.verificationCodePlaceholder}
+                      value={verificationCode}
+                      onChange={(e) => setVerificationCode(e.target.value)}
+                      className={cx(styles.input, styles.codeInput)}
+                      disabled={busy}
+                    />
+                    <button
+                      type="button"
+                      className={cx(styles.secondaryBtn, styles.codeSendBtn)}
+                      data-state={sendingCode ? "loading" : codeCooldownLeft > 0 ? "cooldown" : "idle"}
+                      disabled={busy || sendingCode || codeCooldownLeft > 0 || !registerEmail.trim()}
+                      aria-busy={sendingCode}
+                      aria-live="polite"
+                      aria-label={
+                        sendingCode
+                          ? labels.sendingCode
+                          : codeCooldownLeft > 0
+                            ? labels.codeResendIn.replace("{{seconds}}", String(codeCooldownLeft))
+                            : undefined
+                      }
+                      onClick={() => void runSendCode()}
+                    >
+                      <span className={sendingCode || codeCooldownLeft > 0 ? styles.codeSendHidden : undefined}>
+                        {emailVerificationId ? labels.resendCode : labels.sendCode}
+                      </span>
+                      {sendingCode ? <span className={styles.codeSpinner} aria-hidden /> : null}
+                      {!sendingCode && codeCooldownLeft > 0 ? (
+                        <span className={styles.codeCountdown} aria-hidden>
+                          {codeCooldownLeft}s
+                        </span>
+                      ) : null}
+                    </button>
+                  </div>
+                </>
+              ) : isRegister ? (
                 <>
                   {useEmailRegister ? (
                     <>
@@ -1137,8 +1320,8 @@ export function HeadlessLoginPanel({
                 <input
                   type={passwordVisible ? "text" : "password"}
                   name="password"
-                  autoComplete={isRegister ? "new-password" : "current-password"}
-                  maxLength={isRegister ? REGISTER_FIELD_LIMITS.passwordMax : undefined}
+                  autoComplete={isRegister || isForgot ? "new-password" : "current-password"}
+                  maxLength={isRegister || isForgot ? REGISTER_FIELD_LIMITS.passwordMax : undefined}
                   placeholder={labels.passwordPlaceholder}
                   value={password}
                   onChange={(e) => {
@@ -1148,7 +1331,7 @@ export function HeadlessLoginPanel({
                     );
                   }}
                   onBlur={() => {
-                    if (!isRegister || !password) return;
+                    if ((!isRegister && !isForgot) || !password) return;
                     if (!isRegisterPasswordLength(password)) {
                       setError(labels.passwordLength);
                       return;
@@ -1171,7 +1354,19 @@ export function HeadlessLoginPanel({
                   <PasswordVisibilityIcon visible={passwordVisible} />
                 </button>
               </div>
-              {isRegister ? (
+              {!isForgot && !isRegister && forgotEnabled ? (
+                <p className={styles.switchMode}>
+                  <button
+                    type="button"
+                    className={styles.switchModeBtn}
+                    disabled={busy}
+                    onClick={() => switchPanelMode("forgot")}
+                  >
+                    {labels.forgotLink}
+                  </button>
+                </p>
+              ) : null}
+              {isRegister || isForgot ? (
                 <div className={styles.passwordField}>
                   <input
                     type={passwordVisible ? "text" : "password"}
@@ -1207,7 +1402,7 @@ export function HeadlessLoginPanel({
 
           {showHint && hintText ? <p className={styles.hint}>{hintText}</p> : null}
 
-          {!isRegister && registerEnabled && passwordEnabled ? (
+          {!isRegister && !isForgot && registerEnabled && passwordEnabled ? (
             <p className={styles.switchMode}>
               <button
                 type="button"

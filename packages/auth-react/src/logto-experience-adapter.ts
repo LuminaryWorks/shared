@@ -10,6 +10,9 @@ import {
   type ExperienceEmailSignUpCompleteInput,
   type ExperienceEmailSignUpSendCodeInput,
   type ExperienceEmailSignUpSendCodeResult,
+  type ExperienceForgotPasswordCompleteInput,
+  type ExperienceForgotPasswordSendCodeInput,
+  type ExperienceForgotPasswordSendCodeResult,
   type ExperienceIdentifierType,
   type ExperienceMfaTotpInput,
   type ExperiencePasswordSignInInput,
@@ -63,6 +66,7 @@ export class ExperienceApiError extends Error {
 
 const MFA_REQUIRED_CODE = "session.mfa.require_mfa_verification";
 const MISSING_PROFILE_CODE = "user.missing_profile";
+const MISSING_MFA_CODE = "user.missing_mfa";
 
 export function isMfaVerificationRequired(error: unknown): boolean {
   return error instanceof ExperienceApiError && error.code === MFA_REQUIRED_CODE;
@@ -75,6 +79,42 @@ export function isMfaVerificationRequired(error: unknown): boolean {
  */
 export function isUserMissingProfile(error: unknown): boolean {
   return error instanceof ExperienceApiError && error.code === MISSING_PROFILE_CODE;
+}
+
+/** UserControlled MFA with skippable bind — Experience returns this on /submit. */
+export function isUserMissingMfa(error: unknown): boolean {
+  return error instanceof ExperienceApiError && error.code === MISSING_MFA_CODE;
+}
+
+/** Skip optional MFA bind (Logto UserControlled + skippable). */
+async function skipOptionalMfaBind(apiBase: string): Promise<void> {
+  await experienceFetch(apiBase, "/profile/mfa/mfa-skipped", {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
+}
+
+async function submitExperience(
+  apiBase: string,
+): Promise<{ redirectTo?: string; raw: unknown }> {
+  const normalize = (redirectTo?: string) =>
+    redirectTo ? sameOriginAuthorizeUrl(redirectTo, apiBase) : redirectTo;
+  try {
+    const submitted = await experienceFetch<{ redirectTo?: string }>(apiBase, "/submit", {
+      method: "POST",
+      body: JSON.stringify({}),
+    });
+    return { redirectTo: normalize(submitted?.redirectTo), raw: submitted };
+  } catch (error) {
+    if (!isUserMissingMfa(error)) throw error;
+    // skippable:true — bind is optional; continue without TOTP/WebAuthn.
+    await skipOptionalMfaBind(apiBase);
+    const submitted = await experienceFetch<{ redirectTo?: string }>(apiBase, "/submit", {
+      method: "POST",
+      body: JSON.stringify({}),
+    });
+    return { redirectTo: normalize(submitted?.redirectTo), raw: submitted };
+  }
 }
 
 async function experienceFetch<T>(apiBase: string, path: string, init: RequestInit): Promise<T> {
@@ -189,6 +229,7 @@ export class LogtoExperienceAdapter implements LoginExperienceAdapter {
     LOGIN_EXPERIENCE_CAPABILITIES.passwordSignIn,
     LOGIN_EXPERIENCE_CAPABILITIES.passwordSignUp,
     LOGIN_EXPERIENCE_CAPABILITIES.emailCodeSignUp,
+    LOGIN_EXPERIENCE_CAPABILITIES.emailForgotPassword,
     LOGIN_EXPERIENCE_CAPABILITIES.socialConnectors,
     LOGIN_EXPERIENCE_CAPABILITIES.socialDirectSignIn,
   ];
@@ -240,15 +281,7 @@ export class LogtoExperienceAdapter implements LoginExperienceAdapter {
         });
 
         try {
-          const submitted = await experienceFetch<{ redirectTo?: string }>(
-            apiBase,
-            "/submit",
-            {
-              method: "POST",
-              body: JSON.stringify({}),
-            },
-          );
-          return { redirectTo: submitted?.redirectTo, raw: submitted };
+          return await submitExperience(apiBase);
         } catch (error) {
           if (isMfaVerificationRequired(error)) {
             return { mfaRequired: true };
@@ -272,11 +305,7 @@ export class LogtoExperienceAdapter implements LoginExperienceAdapter {
       method: "POST",
       body: JSON.stringify({ code }),
     });
-    const submitted = await experienceFetch<{ redirectTo?: string }>(input.apiBase, "/submit", {
-      method: "POST",
-      body: JSON.stringify({}),
-    });
-    return { redirectTo: submitted?.redirectTo, raw: submitted };
+    return await submitExperience(input.apiBase);
   }
 
   /**
@@ -334,12 +363,7 @@ export class LogtoExperienceAdapter implements LoginExperienceAdapter {
       body: JSON.stringify({ verificationId }),
     });
 
-    const submitted = await experienceFetch<{ redirectTo?: string }>(apiBase, "/submit", {
-      method: "POST",
-      body: JSON.stringify({}),
-    });
-
-    return { redirectTo: submitted?.redirectTo, raw: submitted };
+    return await submitExperience(apiBase);
   }
 
   async sendRegisterEmailCode(
@@ -521,12 +545,101 @@ export class LogtoExperienceAdapter implements LoginExperienceAdapter {
       });
     }
 
-    const submitted = await experienceFetch<{ redirectTo?: string }>(input.apiBase, "/submit", {
-      method: "POST",
-      body: JSON.stringify({}),
+    return await submitExperience(input.apiBase);
+  }
+
+  async sendForgotPasswordEmailCode(
+    input: ExperienceForgotPasswordSendCodeInput,
+  ): Promise<ExperienceForgotPasswordSendCodeResult> {
+    const email = (input.email || input.identifier || "").trim().toLowerCase();
+    if (!email.includes("@")) {
+      throw new Error("Enter a valid email address");
+    }
+
+    await bootstrapOidcInteraction({
+      apiBase: input.apiBase,
+      identifier: email,
+      password: "",
+      issuer: input.issuer,
+      clientId: input.clientId,
+      redirectUri: input.redirectUri,
+      audience: input.audience,
+      scopes: input.scopes,
+      returnUrl: input.returnUrl,
     });
 
-    return { redirectTo: submitted?.redirectTo, raw: submitted };
+    await experienceFetch(input.apiBase, "", {
+      method: "PUT",
+      body: JSON.stringify({
+        interactionEvent: "ForgotPassword",
+        ...(input.captchaToken ? { captchaToken: input.captchaToken } : {}),
+      }),
+    });
+
+    const sent = await experienceFetch<{ verificationId?: string }>(
+      input.apiBase,
+      "/verification/verification-code",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          identifier: { type: "email", value: email },
+          interactionEvent: "ForgotPassword",
+        }),
+      },
+    );
+
+    if (!sent?.verificationId) {
+      throw new Error("Experience API did not return verificationId for email code");
+    }
+    return { verificationId: sent.verificationId };
+  }
+
+  async experienceForgotPassword(
+    input: ExperienceForgotPasswordCompleteInput,
+  ): Promise<ExperiencePasswordSignUpResult> {
+    const email = (input.email || input.identifier || "").trim().toLowerCase();
+    if (!email.includes("@")) {
+      throw new Error("Enter a valid email address");
+    }
+    if (!isRegisterPasswordLength(input.password ?? "")) {
+      throw new Error("Password must be 8–32 characters");
+    }
+    if (isRegisterPasswordTooSimple(input.password ?? "")) {
+      throw new Error(
+        "Password is too simple. Use both letters and digits, and avoid repeats or sequences.",
+      );
+    }
+    if (!isRegisterVerificationCode(input.code ?? "") || !input.verificationId?.trim()) {
+      throw new Error("Enter the 6-digit verification code");
+    }
+
+    // Continue the ForgotPassword interaction from sendForgotPasswordEmailCode.
+    const verified = await experienceFetch<{ verificationId?: string }>(
+      input.apiBase,
+      "/verification/verification-code/verify",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          identifier: { type: "email", value: email },
+          verificationId: input.verificationId,
+          code: input.code.trim(),
+        }),
+      },
+    );
+
+    const codeVerificationId = verified?.verificationId || input.verificationId;
+
+    await experienceFetch(input.apiBase, "/identification", {
+      method: "POST",
+      body: JSON.stringify({ verificationId: codeVerificationId }),
+    });
+
+    await experienceFetch(input.apiBase, "/profile/password", {
+      method: "PUT",
+      body: JSON.stringify({ password: input.password }),
+    });
+
+    return await submitExperience(input.apiBase);
   }
 
   async fetchSocialConnectors(
