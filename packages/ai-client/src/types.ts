@@ -81,7 +81,7 @@ export interface AiUsageEvent {
   completionTokens: number;
   audioInputMs?: number;
   audioOutputMs?: number;
-  billed: "byok" | "managed";
+  billed: "byok" | "managed" | "contract";
   latencyMs?: number;
   firstTokenMs?: number;
   cacheHit?: boolean;
@@ -90,6 +90,18 @@ export interface AiUsageEvent {
   status?: string;
   traceId?: string;
   at: string;
+  /** Extensions from spec/ai-wallet-and-billing.md §7. Nullable until the ledger (P2). */
+  walletId?: string | null;
+  grantIds?: string[] | null;
+  rateCardId?: string | null;
+  rateCardVersion?: string | number | null;
+  upstreamCostMicroUsd?: number | null;
+  chargedMicro?: number | null;
+  routeId?: string | null;
+  attemptIndex?: number | null;
+  partial?: boolean | null;
+  surface?: "product" | "public" | null;
+  apiKeyId?: string | null;
 }
 
 export interface TranscribeInput {

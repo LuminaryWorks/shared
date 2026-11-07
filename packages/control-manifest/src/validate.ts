@@ -376,7 +376,7 @@ function validateCapabilityWiring(manifest: ControlManifest): ControlIssue[] {
         error("ai_service_missing", "services.ai", "capabilities.ai=central requires services.ai."),
       );
     }
-    if (hardened) {
+    if (hardened && AI_CENTRAL_HARDENING_BLOCKERS.length > 0) {
       issues.push(
         error(
           "ai_central_not_hardened",

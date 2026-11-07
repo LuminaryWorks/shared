@@ -321,9 +321,8 @@ describe("ai gate", () => {
         },
       });
       const result = validateControlManifest(manifest);
-      expect(codes(result.errors)).toEqual(
-        expect.arrayContaining(["ai_central_not_hardened", "capability_not_ready_for_stage"]),
-      );
+      expect(codes(result.errors)).toContain("capability_not_ready_for_stage");
+      expect(codes(result.errors)).not.toContain("ai_central_not_hardened");
     }
   });
 

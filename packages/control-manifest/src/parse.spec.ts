@@ -108,16 +108,22 @@ describe("preflightControlManifest", () => {
       { env: { LW_AI_MODE: "central" } },
     );
     expect(report.ok).toBe(false);
-    expect(report.errors.map((issue) => issue.code)).toContain("ai_central_not_hardened");
+    expect(report.errors.map((issue) => issue.code)).toContain("capability_not_ready_for_stage");
+    expect(report.errors.map((issue) => issue.code)).not.toContain("ai_central_not_hardened");
   });
 });
 
 describe("describeAiCentralGate", () => {
-  test("reports the AI Platform as not hardened yet", () => {
+  test("reports the P1 hardening gates as complete", () => {
     const gate = describeAiCentralGate();
-    expect(gate.hardened).toBe(false);
-    expect(gate.blockers).toEqual(
-      expect.arrayContaining(["authn", "entitlement", "persistentMetering"]),
-    );
+    expect(gate.hardened).toBe(true);
+    expect(gate.blockers).toEqual([]);
+    expect(gate.gates).toEqual({
+      authn: true,
+      entitlement: true,
+      persistentMetering: true,
+      secretVault: true,
+      readiness: true,
+    });
   });
 });

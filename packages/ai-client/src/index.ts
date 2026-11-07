@@ -1,4 +1,5 @@
 export * from "./types";
+export * from "./contract-v2";
 export * from "./catalog";
 export * from "./urls";
 export * from "./models";

@@ -90,9 +90,11 @@ export const NON_RUNTIME_PRODUCTS: readonly ProductCode[] = ["blockyedu"];
 /**
  * Honest maturity of each central capability as implemented today.
  *
- * `ai: central` is deliberately **not** production: the AI Platform service has
- * no AuthN, no Entitlement enforcement and only in-memory metering. Preflight
- * refuses `ai=central` for pilot/production until that changes.
+ * `ai: central` stays **lab**: the P1 hardening gates can be true while route
+ * execution, the credit ledger, and the public API are still unfinished.
+ * Preflight still rejects that mode on pilot/production via
+ * `capability_not_ready_for_stage` until this maturity is raised.
+ * `ai_central_not_hardened` fires only while a gate below is still false.
  */
 export const CAPABILITY_MATURITY: Readonly<{
   identity: Record<IdentityMode, CapabilityMaturity>;
@@ -112,20 +114,22 @@ export const CAPABILITY_MATURITY: Readonly<{
 };
 
 /**
- * Gates that must all be true before `ai=central` may enter a hardened stage.
- * Update these flags in the same change that lands the capability — not before.
+ * P1 hardening checklist. Flip a flag only in the change that lands that capability.
+ * These flags no longer block pilot/production by themselves once every entry is
+ * true. `CAPABILITY_MATURITY.ai.central` is still `lab`, so preflight keeps
+ * rejecting `ai=central` on those stages via `capability_not_ready_for_stage`.
  */
 export const AI_CENTRAL_HARDENING_GATES: Readonly<Record<string, boolean>> = {
-  /** AI Platform verifies OIDC/JWT and rejects anonymous callers. */
-  authn: false,
-  /** AI Platform consults central Entitlement before spending provider quota. */
-  entitlement: false,
-  /** Usage is metered to durable storage, not process memory. */
-  persistentMetering: false,
-  /** Provider secrets come from a vault, not request bodies or env dumps. */
-  secretVault: false,
-  /** `/ready` reflects provider/vault/storage dependencies. */
-  readiness: false,
+  /** AI Platform verifies OIDC/JWT or a service credential and rejects anonymous callers. */
+  authn: true,
+  /** Hosted calls consult central Entitlement before spending provider quota. BYOK does not. */
+  entitlement: true,
+  /** Usage events and connection metadata are stored in Postgres. */
+  persistentMetering: true,
+  /** Provider secrets are AES-256-GCM ciphertext in Postgres. Production business routes refuse body secrets. */
+  secretVault: true,
+  /** `/ready` reflects Postgres and the vault master key. */
+  readiness: true,
 };
 
 export const AI_CENTRAL_HARDENING_BLOCKERS: readonly string[] = Object.entries(
