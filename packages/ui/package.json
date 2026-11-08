@@ -1,0 +1,62 @@
+{
+  "name": "@luminaryworks/ui",
+  "version": "0.1.0",
+  "license": "Polyform-Noncommercial-1.0.0",
+  "description": "LuminaryWorks Ant Design application shell for platform apps",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/LuminaryWorks/shared.git",
+    "directory": "packages/ui"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org",
+    "access": "public"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./shell.css": "./shell.css",
+    "./package.json": "./package.json"
+  },
+  "sideEffects": [
+    "**/*.css",
+    "./dist/index.js"
+  ],
+  "files": [
+    "dist",
+    "shell.css",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "test": "pnpm run build && node --test test/*.test.mjs",
+    "prepublishOnly": "pnpm run build"
+  },
+  "peerDependencies": {
+    "@ant-design/icons": "^6.0.0",
+    "antd": "^6.6.5",
+    "react": "^18.0.0 || ^19.0.0",
+    "react-dom": "^18.0.0 || ^19.0.0"
+  },
+  "devDependencies": {
+    "@ant-design/icons": "^6.3.4",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "antd": "^6.6.5",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "tsup": "^8.5.0",
+    "typescript": "6.0.3"
+  },
+  "engines": {
+    "node": ">=24.0.0",
+    "pnpm": ">=11"
+  }
+}

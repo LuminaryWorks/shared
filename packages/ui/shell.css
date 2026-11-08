@@ -1,0 +1,239 @@
+/**
+ * Layout chrome for `@luminaryworks/ui` AppShell.
+ * Primary actions use luminaryAntTheme (#1677ff from shared/brand). These rules
+ * only size the shell; the dark sider chrome matches Ant Design's dark sider.
+ */
+.console-layout {
+  height: 100vh;
+  overflow: hidden;
+}
+.console-layout > .ant-layout-sider {
+  height: 100vh;
+  overflow: hidden;
+}
+.console-sider > .ant-layout-sider-children {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+.console-menu-scroll {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+.console-sider .ant-menu.ant-menu-root {
+  max-width: 100%;
+  min-width: 0;
+  border-inline-end: 0;
+}
+.console-sider .ant-menu-item,
+.console-sider .ant-menu-submenu-title,
+.console-sider .ant-menu-item-group-title {
+  max-width: 100%;
+  overflow: hidden;
+}
+.console-sider-toggle {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 100%;
+  height: 48px;
+  margin: 0;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 0;
+  background: #002140;
+  color: rgba(255, 255, 255, 0.85);
+  cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+.console-sider-toggle span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.console-sider-toggle:hover {
+  color: #fff;
+  background: #001529;
+}
+.ant-layout-sider-collapsed .console-sider-toggle {
+  justify-content: center;
+  padding: 0;
+}
+.console-main {
+  min-width: 0;
+  height: 100vh;
+  overflow: hidden;
+  background: #f5f5f5;
+}
+.console-header.ant-layout-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  height: auto;
+  min-height: 64px;
+  line-height: 1.4;
+  padding: 8px 16px 8px 24px;
+  background: #fff;
+  border-bottom: 1px solid #f0f0f0;
+}
+.console-header-title {
+  flex: none;
+  min-width: 0;
+  font-weight: 650;
+}
+.console-tools {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  flex: none;
+}
+.console-content {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 24px;
+}
+.console-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 64px;
+  padding: 0 16px;
+  color: #fff;
+  font-weight: 650;
+}
+.console-brand-name {
+  min-width: 0;
+  font-size: 13px;
+  line-height: 1.3;
+  word-break: keep-all;
+}
+.console-mark {
+  width: 32px;
+  height: 32px;
+  display: block;
+  object-fit: contain;
+  flex: none;
+}
+.ant-layout-sider-collapsed .console-brand {
+  justify-content: center;
+  padding: 0;
+}
+.skip {
+  position: absolute;
+  left: -999px;
+}
+.skip:focus {
+  left: 8px;
+  top: 8px;
+  background: #fff;
+  padding: 4px 8px;
+  z-index: 20;
+}
+.page-header-slot {
+  flex: 1;
+  min-width: 0;
+}
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin: 0;
+  min-width: 0;
+}
+.page-heading {
+  min-width: 0;
+}
+.page-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+}
+.lang-menu {
+  position: relative;
+}
+.plain-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 0;
+  background: transparent;
+  color: #3d4d60;
+  padding: 0.2rem 0;
+  border-radius: 0;
+  font-weight: 600;
+  box-shadow: none;
+}
+.lang-trigger {
+  color: #3d4d60;
+}
+.lang-menu.is-on-dark .lang-trigger {
+  color: #e8eef8;
+}
+.lang-menu.is-on-dark .lang-trigger:hover {
+  color: #fff;
+}
+.lang-icon {
+  display: block;
+}
+.lang-list {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.4rem);
+  min-width: 12.5rem;
+  margin: 0;
+  padding: 0.35rem;
+  list-style: none;
+  background: #fff;
+  border: 1px solid #e6e8ee;
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(18, 32, 51, 0.12);
+  z-index: 20;
+}
+.lang-list button {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  border: 0;
+  background: transparent;
+  border-radius: 8px;
+  text-align: left;
+  padding: 0.45rem 0.6rem;
+}
+.lang-list button:hover,
+.lang-list button[aria-checked="true"] {
+  background: #e6f0ff;
+}
+.lang-list button[aria-checked="true"] {
+  color: #1677ff;
+  font-weight: 650;
+}
+.confirm-summary {
+  margin: 0.5rem 0;
+  padding-left: 1.2rem;
+}
+.lw-data-table {
+  min-width: 0;
+}
+@media (max-width: 800px) {
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .page-actions {
+    justify-content: flex-start;
+  }
+}
