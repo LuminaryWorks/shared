@@ -3,3 +3,6 @@ dist/
 *.log
 .pnpm-store/
 packages/auth-react/test/.iam-fixture/
+
+# Local AI provider secrets — never commit
+.env.ai
